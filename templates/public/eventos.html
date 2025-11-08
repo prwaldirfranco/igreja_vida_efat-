@@ -1,0 +1,36 @@
+{% extends "base.html" %}
+{% block title %}Eventos{% endblock %}
+
+{% block content %}
+<div class="container py-5">
+    <h1 class="text-center mb-5">Nossos Eventos</h1>
+    <div class="row g-4">
+        {% for e in eventos %}
+        <div class="col-lg-6">
+            <div class="card h-100">
+                <div class="row g-0">
+                    <div class="col-md-4">
+                        {% if e.imagem %}
+                            <img src="{{ url_for('uploaded_file', filename=e.imagem) }}" class="img-fluid rounded-start" style="height: 100%; object-fit: cover;">
+                        {% else %}
+                            <img src="https://via.placeholder.com/300?text=Evento" class="img-fluid rounded-start">
+                        {% endif %}
+                    </div>
+                    <div class="col-md-8">
+                        <div class="card-body">
+                            <h5 class="card-title">{{ e.titulo }}</h5>
+                            <p class="card-text text-muted"><strong>{{ e.data.strftime('%d de %B de %Y') }}</strong></p>
+                            <p class="card-text">{{ e.descricao }}</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        {% else %}
+        <div class="col-12 text-center">
+            <p class="text-muted">Nenhum evento cadastrado.</p>
+        </div>
+        {% endfor %}
+    </div>
+</div>
+{% endblock %}

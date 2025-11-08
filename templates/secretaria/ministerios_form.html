@@ -1,0 +1,25 @@
+{% extends "base.html" %}
+{% block title %}{{ title }}{% endblock %}
+
+{% block content %}
+<div class="container py-5">
+    <h1>{{ title }}</h1>
+    <form method="POST">
+        {{ form.hidden_tag() }}
+        <div class="mb-3">
+            {{ form.nome.label(class="form-label") }}
+            {{ form.nome(class="form-control") }}
+        </div>
+        <div class="mb-3">
+            {{ form.lider.label(class="form-label") }}
+            {{ form.lider(class="form-control") }}
+        </div>
+        <div class="mb-3">
+            {{ form.descricao.label(class="form-label") }}
+            {{ form.descricao(class="form-control", rows=4) }}
+        </div>
+        <button type="submit" class="btn btn-success">{{ form.submit.label.text }}</button>
+        <a href="{{ url_for('listar_ministerios') }}" class="btn btn-secondary">Cancelar</a>
+    </form>
+</div>
+{% endblock %}

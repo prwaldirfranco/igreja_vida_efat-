@@ -1,0 +1,39 @@
+/* Centralização perfeita */
+html, body {
+  height: 100%;
+  margin: 0;
+  background-color: #fff;
+  color: #111;
+  font-family: 'Poppins', sans-serif;
+}
+
+/* Remove margens padrão do Bootstrap */
+.vh-100 {
+  min-height: 100vh;
+}
+
+/* Logo suave e responsiva */
+img {
+  transition: transform 0.2s ease;
+}
+
+img:hover {
+  transform: scale(1.05);
+}
+
+/* Ajuste para texto principal */
+h1 {
+  line-height: 1.2;
+  letter-spacing: -0.5px;
+}
+
+/* Cards de eventos */
+.card {
+  border-radius: 12px;
+  background-color: #fafafa;
+}
+
+.card:hover {
+  transform: translateY(-3px);
+  transition: 0.3s;
+}

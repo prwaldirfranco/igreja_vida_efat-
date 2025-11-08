@@ -1,0 +1,30 @@
+{% extends "base.html" %}
+{% block title %}Ministérios{% endblock %}
+
+{% block content %}
+<section class="text-center py-5" style="background-color: #111; color: white;">
+    <div class="container">
+        <h1 class="fw-bold">Ministérios da Comunidade Batista Vida Efatá</h1>
+        <p class="lead">Servindo com amor, unidade e propósito no corpo de Cristo.</p>
+    </div>
+</section>
+
+<section class="py-5 bg-light">
+    <div class="container">
+        <div class="row g-4 justify-content-center">
+            {% for m in ministerios %}
+            <div class="col-md-4">
+                <div class="card border-0 shadow-sm text-center p-4 h-100">
+                    <h4 class="fw-bold text-dark">{{ m.nome }}</h4>
+                    <p class="text-muted">Liderado por <strong>{{ m.lider }}</strong>, {{ m.descricao }}</p>
+                </div>
+            </div>
+            {% else %}
+            <div class="col-12 text-center">
+                <p class="text-muted">Nenhum ministério cadastrado.</p>
+            </div>
+            {% endfor %}
+        </div>
+    </div>
+</section>
+{% endblock %}

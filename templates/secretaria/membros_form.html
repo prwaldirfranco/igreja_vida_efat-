@@ -1,0 +1,104 @@
+{% extends "base.html" %}
+{% block title %}Novo Membro{% endblock %}
+
+{% block content %}
+<div class="container py-5">
+    <h1 class="mb-4">Cadastro de Membro</h1>
+    <form method="POST" enctype="multipart/form-data">
+        {{ form.hidden_tag() }}
+        <div class="row g-3">
+            <div class="col-md-6">
+                {{ form.nome.label(class="form-label") }}
+                {{ form.nome(class="form-control") }}
+            </div>
+            <div class="col-md-6">
+                {{ form.celular.label(class="form-label") }}
+                {{ form.celular(class="form-control", placeholder="(11) 99999-9999") }}
+            </div>
+            <div class="col-md-6">
+                {{ form.email.label(class="form-label") }}
+                {{ form.email(class="form-control") }}
+            </div>
+            <div class="col-md-6">
+                {{ form.telefone.label(class="form-label") }}
+                {{ form.telefone(class="form-control") }}
+            </div>
+
+            <div class="col-12"><hr></div>
+
+            <div class="col-md-3">
+                {{ form.cep.label(class="form-label") }}
+                {{ form.cep(class="form-control") }}
+            </div>
+            <div class="col-md-6">
+                {{ form.endereco.label(class="form-label") }}
+                {{ form.endereco(class="form-control") }}
+            </div>
+            <div class="col-md-3">
+                {{ form.bairro.label(class="form-label") }}
+                {{ form.bairro(class="form-control") }}
+            </div>
+            <div class="col-md-3">
+                {{ form.cidade.label(class="form-label") }}
+                {{ form.cidade(class="form-control") }}
+            </div>
+            <div class="col-md-3">
+                {{ form.estado.label(class="form-label") }}
+                {{ form.estado(class="form-control") }}
+            </div>
+
+            <div class="col-12"><hr></div>
+
+            <div class="col-md-4">
+                {{ form.data_nascimento.label(class="form-label") }}
+                {{ form.data_nascimento(class="form-control") }}
+            </div>
+            <div class="col-md-4">
+                {{ form.estado_civil.label(class="form-label") }}
+                {{ form.estado_civil(class="form-select") }}
+            </div>
+            <div class="col-md-4">
+                {{ form.conjuge.label(class="form-label") }}
+                {{ form.conjuge(class="form-control") }}
+            </div>
+            <div class="col-md-3">
+                {{ form.filhos.label(class="form-label") }}
+                {{ form.filhos(class="form-control") }}
+            </div>
+
+            <div class="col-12"><hr></div>
+
+            <div class="col-md-4">
+                <div class="form-check">
+                    {{ form.batizado(class="form-check-input") }}
+                    {{ form.batizado.label(class="form-check-label") }}
+                </div>
+            </div>
+            <div class="col-md-4">
+                {{ form.data_batismo.label(class="form-label") }}
+                {{ form.data_batismo(class="form-control") }}
+            </div>
+            <div class="col-md-4">
+                {{ form.ministerio.label(class="form-label") }}
+                {{ form.ministerio(class="form-control") }}
+            </div>
+
+            <div class="col-md-4">
+                {{ form.foto.label(class="form-label") }}
+                {{ form.foto(class="form-control") }}
+            </div>
+            <div class="col-md-4">
+                <div class="form-check mt-4">
+                    {{ form.ativo(class="form-check-input") }}
+                    {{ form.ativo.label(class="form-check-label") }}
+                </div>
+            </div>
+
+            <div class="col-12 mt-4">
+                {{ form.submit(class="btn btn-success btn-lg") }}
+                <a href="{{ url_for('listar_membros') }}" class="btn btn-secondary btn-lg">Cancelar</a>
+            </div>
+        </div>
+    </form>
+</div>
+{% endblock %}

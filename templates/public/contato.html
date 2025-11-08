@@ -1,0 +1,35 @@
+{% extends "base.html" %}
+{% block title %}Contato{% endblock %}
+
+{% block content %}
+<div class="container py-5">
+    <h1 class="text-center mb-5">Fale Conosco</h1>
+    <div class="row">
+        <div class="col-md-6">
+            <form>
+                <div class="mb-3">
+                    <label class="form-label">Nome</label>
+                    <input type="text" class="form-control" required>
+                </div>
+                <div class="mb-3">
+                    <label class="form-label">Email</label>
+                    <input type="email" class="form-control" required>
+                </div>
+                <div class="mb-3">
+                    <label class="form-label">Mensagem</label>
+                    <textarea class="form-control" rows="5" required></textarea>
+                </div>
+                <button type="submit" class="btn btn-primary">Enviar</button>
+            </form>
+        </div>
+        <div class="col-md-6">
+            <h3>Endereço</h3>
+            <p>Rua Exemplo, 123 - Centro<br>São Paulo, SP</p>
+            <h3>Telefone</h3>
+            <p>(11) 99999-9999</p>
+            <h3>Email</h3>
+            <p>contato@vidaefata.com.br</p>
+        </div>
+    </div>
+</div>
+{% endblock %}

@@ -1,0 +1,41 @@
+{% extends "includes/_layout.html" %}
+{% block title %}Novo Usuário{% endblock %}
+
+{% block content %}
+<div class="container py-4">
+  <div class="row justify-content-center">
+    <div class="col-md-6">
+      <div class="card border-0 shadow">
+        <div class="card-header bg-primary text-white">
+          <h5 class="mb-0">Criar Novo Usuário</h5>
+        </div>
+        <div class="card-body">
+          <form method="POST">
+            {{ form.hidden_tag() }}
+            <div class="mb-3">
+              {{ form.nome.label(class="form-label") }}
+              {{ form.nome(class="form-control") }}
+            </div>
+            <div class="mb-3">
+              {{ form.email.label(class="form-label") }}
+              {{ form.email(class="form-control") }}
+            </div>
+            <div class="mb-3">
+              {{ form.senha.label(class="form-label") }}
+              {{ form.senha(class="form-control") }}
+            </div>
+            <div class="mb-3">
+              {{ form.nivel_acesso.label(class="form-label") }}
+              {{ form.nivel_acesso(class="form-select") }}
+              <div class="form-text">
+                <small>Admin: acesso total | Secretária: membros/eventos | Financeiro: apenas financeiro</small>
+              </div>
+            </div>
+            <button type="submit" class="btn btn-primary w-100">Criar Usuário</button>
+          </form>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}

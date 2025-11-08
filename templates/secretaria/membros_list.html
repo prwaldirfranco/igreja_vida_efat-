@@ -1,0 +1,150 @@
+{% extends "includes/_layout.html" %}
+{% block title %}Membros{% endblock %}
+
+{% block content %}
+<div class="container-fluid py-4">
+  <div class="d-flex justify-content-between align-items-center mb-4">
+    <h2 class="h4 mb-0">Membros</h2>
+    <div>
+      <a href="{{ url_for('novo_membro') }}" class="btn btn-primary btn-sm">
+        Novo Membro
+      </a>
+      <a href="{{ url_for('importar_membros') }}" class="btn btn-success btn-sm">
+        Importar CSV
+      </a>
+    </div>
+  </div>
+
+  <!-- BARRA DE BUSCA -->
+  <form method="GET" class="mb-3">
+    <div class="input-group">
+      <input type="text" name="q" class="form-control" placeholder="Buscar por nome, celular ou e-mail..." value="{{ request.args.get('q', '') }}">
+      <button type="submit" class="btn btn-outline-secondary">
+        Buscar
+      </button>
+      {% if request.args.get('q') %}
+      <a href="{{ url_for('listar_membros') }}" class="btn btn-outline-danger">
+        Limpar
+      </a>
+      {% endif %}
+    </div>
+  </form>
+
+  <div class="card border-0 shadow-sm">
+    <div class="card-body p-0">
+      <div class="table-responsive">
+        <table class="table table-hover mb-0 align-middle">
+          <thead class="table-light">
+            <tr>
+              <th class="ps-3">Foto</th>
+              <th>Nome</th>
+              <th>Celular</th>
+              <th>E-mail</th>
+              <th>Ministério</th>
+              <th class="text-center">Ações</th>
+            </tr>
+          </thead>
+          <tbody>
+            {% for m in membros %}
+            <tr>
+              <td class="ps-3">
+                <img src="{{ url_for('static', filename='fotos_membros/' + (m.foto or 'default.jpg')) }}"
+                     class="rounded-circle" width="40" height="40" alt="{{ m.nome }}">
+              </td>
+              <td class="fw-medium">{{ m.nome }}</td>
+              <td>{{ m.celular or '-' }}</td>
+              <td><small>{{ m.email or '-' }}</small></td>
+              <td>
+                {% if m.ministerio %}
+                  <span class="badge bg-info">{{ m.ministerio }}</span>
+                {% else %}
+                  <span class="text-muted">—</span>
+                {% endif %}
+              </td>
+              <td class="text-center">
+                <button class="btn btn-outline-primary btn-sm" data-bs-toggle="modal" data-bs-target="#editModal{{ m.id }}">
+                  Editar
+                </button>
+                <form method="POST" action="{{ url_for('excluir_membro', id=m.id) }}" class="d-inline">
+                  <button type="submit" class="btn btn-outline-danger btn-sm" onclick="return confirm('Excluir {{ m.nome }}?')">
+                    Excluir
+                  </button>
+                </form>
+              </td>
+            </tr>
+
+            <!-- MODAL DE EDIÇÃO COM FOTO -->
+            <div class="modal fade" id="editModal{{ m.id }}" tabindex="-1">
+              <div class="modal-dialog modal-lg">
+                <div class="modal-content">
+                  <div class="modal-header bg-primary text-white">
+                    <h6 class="modal-title">Editar {{ m.nome }}</h6>
+                    <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+                  </div>
+                  <form method="POST" action="{{ url_for('editar_membro', id=m.id) }}" enctype="multipart/form-data">
+                    <div class="modal-body">
+                      <div class="text-center mb-3">
+                        <img src="{{ url_for('static', filename='fotos_membros/' + (m.foto or 'default.jpg')) }}"
+                             class="rounded-circle" width="100" height="100" alt="{{ m.nome }}">
+                        <div class="mt-2">
+                          <input type="file" name="foto" class="form-control form-control-sm" accept="image/*">
+                          <small class="text-muted">Deixe em branco para manter a foto atual</small>
+                        </div>
+                      </div>
+                      <div class="row g-3">
+                        <div class="col-md-6">
+                          <label class="form-label small">Nome</label>
+                          <input type="text" name="nome" class="form-control form-control-sm" value="{{ m.nome }}" required>
+                        </div>
+                        <div class="col-md-6">
+                          <label class="form-label small">E-mail</label>
+                          <input type="email" name="email" class="form-control form-control-sm" value="{{ m.email }}">
+                        </div>
+                        <div class="col-md-4">
+                          <label class="form-label small">Celular</label>
+                          <input type="text" name="celular" class="form-control form-control-sm" value="{{ m.celular }}">
+                        </div>
+                        <div class="col-md-4">
+                          <label class="form-label small">Ministério</label>
+                          <select name="ministerio_id" class="form-select form-select-sm">
+                            <option value="">-- Nenhum --</option>
+                            {% for min in ministerios %}
+                              <option value="{{ min.id }}" {% if m.ministerio == min.nome %}selected{% endif %}>
+                                {{ min.nome }}
+                              </option>
+                            {% endfor %}
+                          </select>
+                        </div>
+                        <div class="col-md-4">
+                          <label class="form-label small">Estado Civil</label>
+                          <select name="estado_civil" class="form-select form-select-sm">
+                            <option value="solteiro" {% if m.estado_civil == 'solteiro' %}selected{% endif %}>Solteiro(a)</option>
+                            <option value="casado" {% if m.estado_civil == 'casado' %}selected{% endif %}>Casado(a)</option>
+                            <option value="viuvo" {% if m.estado_civil == 'viuvo' %}selected{% endif %}>Viúvo(a)</option>
+                            <option value="divorciado" {% if m.estado_civil == 'divorciado' %}selected{% endif %}>Divorciado(a)</option>
+                          </select>
+                        </div>
+                      </div>
+                    </div>
+                    <div class="modal-footer">
+                      <button type="button" class="btn btn-secondary btn-sm" data-bs-dismiss="modal">Cancelar</button>
+                      <button type="submit" class="btn btn-primary btn-sm">Salvar</button>
+                    </div>
+                  </form>
+                </div>
+              </div>
+            </div>
+            {% else %}
+            <tr>
+              <td colspan="6" class="text-center text-muted py-5">
+                Nenhum membro encontrado.
+              </td>
+            </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}

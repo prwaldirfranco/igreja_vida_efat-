@@ -1,0 +1,28 @@
+{% extends "includes/_layout.html" %}
+{% block title %}Importar Membros{% endblock %}
+
+{% block content %}
+<div class="container py-4">
+  <div class="row justify-content-center">
+    <div class="col-md-6">
+      <div class="card border-0 shadow">
+        <div class="card-header bg-primary text-white">
+          <h5 class="mb-0">Importar Membros via CSV</h5>
+        </div>
+        <div class="card-body">
+          <form method="POST" enctype="multipart/form-data">
+            <div class="mb-3">
+              <label class="form-label">Arquivo CSV</label>
+              <input type="file" name="csv_file" class="form-control" accept=".csv" required>
+              <small class="text-muted">Colunas: nome, email, celular, data_nascimento (DD/MM/AAAA), etc.</small>
+            </div>
+            <button type="submit" class="btn btn-success w-100">
+              <i class="bi bi-upload"></i> Importar Membros
+            </button>
+          </form>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}
