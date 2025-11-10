@@ -4,21 +4,40 @@
 {% block content %}
 <div class="container-fluid py-4">
 
-  <!-- Cabeçalho + Filtro de Mês -->
+  <!-- Cabeçalho + Filtro de Mês + Botão Configurar -->
   <div class="d-flex justify-content-between align-items-center mb-4">
-    <h2 class="h4 mb-0">
-      <i class="bi bi-cash-stack"></i> Financeiro
-    </h2>
-    <form method="GET" class="d-flex gap-2">
-      <input type="month" name="mes" value="{{ mes }}" class="form-control form-control-sm" style="width: 160px;">
-      <button type="submit" class="btn btn-outline-primary btn-sm">
-        <i class="bi bi-funnel"></i> Filtrar
-      </button>
-    </form>
+    <div>
+      <h2 class="h4 mb-0">
+        <i class="bi bi-cash-stack"></i> Financeiro
+      </h2>
+      <!-- Mês Atual e Situação -->
+      <small class="text-muted">
+        📅 Mês Atual:
+        <strong>{{ mes_atual_formatado }}</strong> —
+        {% if saldo_final < 0 %}
+          <span class="text-danger fw-bold">Situação: NEGATIVA (Déficit)</span>
+        {% else %}
+          <span class="text-success fw-bold">Situação: POSITIVA (Superávit)</span>
+        {% endif %}
+      </small>
+    </div>
+
+    <div class="d-flex gap-2">
+      <a href="{{ url_for('configurar_financeiro') }}" class="btn btn-outline-secondary btn-sm">
+        <i class="bi bi-gear"></i> Configurar
+      </a>
+      <form method="GET" class="d-flex gap-2">
+        <input type="month" name="mes" value="{{ mes }}" class="form-control form-control-sm" style="width: 160px;">
+        <button type="submit" class="btn btn-outline-primary btn-sm">
+          <i class="bi bi-funnel"></i> Filtrar
+        </button>
+      </form>
+    </div>
   </div>
 
   <!-- Cards de Resumo -->
   <div class="row g-3 mb-4">
+    <!-- Entradas -->
     <div class="col-6 col-md-3">
       <div class="card border-0 shadow-sm h-100 text-white" style="background: linear-gradient(135deg, #28a745, #20c997);">
         <div class="card-body d-flex flex-column justify-content-between">
@@ -31,6 +50,7 @@
       </div>
     </div>
 
+    <!-- Saídas -->
     <div class="col-6 col-md-3">
       <div class="card border-0 shadow-sm h-100 text-white" style="background: linear-gradient(135deg, #dc3545, #fd7e14);">
         <div class="card-body d-flex flex-column justify-content-between">
@@ -43,6 +63,7 @@
       </div>
     </div>
 
+    <!-- Fixos -->
     <div class="col-6 col-md-3">
       <div class="card border-0 shadow-sm h-100 text-white" style="background: linear-gradient(135deg, #ffc107, #fd7e14);">
         <div class="card-body d-flex flex-column justify-content-between">
@@ -55,6 +76,7 @@
       </div>
     </div>
 
+    <!-- Saldo Final -->
     <div class="col-6 col-md-3">
       <div class="card border-0 shadow-sm h-100 text-white {% if saldo_final < 0 %}bg-danger{% else %}bg-primary{% endif %}">
         <div class="card-body d-flex flex-column justify-content-between">
@@ -68,6 +90,51 @@
             {% endif %}
           </div>
           <i class="bi bi-piggy-bank fs-1 opacity-25"></i>
+        </div>
+      </div>
+    </div>
+
+    <!-- Saldo Real -->
+    <div class="col-6 col-md-3">
+      <div class="card border-0 shadow-sm h-100 text-white" style="background: linear-gradient(135deg, #17a2b8, #0dcaf0);">
+        <div class="card-body d-flex flex-column justify-content-between">
+          <div>
+            <h6 class="mb-1 opacity-75">Saldo Real</h6>
+            <h3 class="mb-0">R$ {{ "%.2f"|format(saldo_real) }}</h3>
+            {% if saldo_real < 0 %}
+              <small class="badge bg-light text-danger mt-1">DÉFICIT</small>
+            {% else %}
+              <small class="badge bg-light text-info mt-1">POSIÇÃO</small>
+            {% endif %}
+          </div>
+          <i class="bi bi-wallet2 fs-1 opacity-25"></i>
+        </div>
+      </div>
+    </div>
+
+    <!-- Provisão Extras -->
+    <div class="col-6 col-md-3">
+      <div class="card border-0 shadow-sm h-100 text-white" style="background: linear-gradient(135deg, #6f42c1, #9c27b0);">
+        <div class="card-body d-flex flex-column justify-content-between">
+          <div>
+            <h6 class="mb-1 opacity-75">Provisão Extras</h6>
+            <h3 class="mb-0">R$ {{ "%.2f"|format(provisao_extras) }}</h3>
+          </div>
+          <i class="bi bi-shield-check fs-1 opacity-25"></i>
+        </div>
+      </div>
+    </div>
+
+    <!-- Dizimistas Necessários -->
+    <div class="col-6 col-md-3">
+      <div class="card border-0 shadow-sm h-100 text-white" style="background: linear-gradient(135deg, #fd7e14, #f39c12);">
+        <div class="card-body d-flex flex-column justify-content-between">
+          <div>
+            <h6 class="mb-1 opacity-75">Dizimistas Necessários</h6>
+            <h3 class="mb-0">{{ dizimistas_necessarios }}</h3>
+            <small class="text-light">para cobrir extras</small>
+          </div>
+          <i class="bi bi-people fs-1 opacity-25"></i>
         </div>
       </div>
     </div>
@@ -162,103 +229,105 @@
             </tr>
           </thead>
           <tbody>
-            {% for t in transacoes %}
-            <tr class="{% if t.tipo == 'despesa' %}table-danger{% else %}table-success{% endif %}">
-              <td class="ps-3 fw-medium">{{ t.data.strftime('%d/%m/%Y') }}</td>
-              <td>
-                <span class="badge {% if t.tipo == 'despesa' %}bg-danger{% elif t.tipo == 'dizimo' %}bg-success{% elif t.tipo == 'oferta' %}bg-info{% else %}bg-warning text-dark{% endif %}">
-                  {{ t.tipo|title }}
-                </span>
-              </td>
-              <td>{{ t.categoria }}</td>
-              <td>
-                <span class="badge bg-secondary">
-                  {% if t.metodo == 'pix' %}Pix{% elif t.metodo == 'dinheiro' %}Dinheiro{% else %}Cartão{% endif %}
-                </span>
-              </td>
-              <td class="text-end fw-bold">R$ {{ "%.2f"|format(t.valor) }}</td>
-              <td>
-                {% if t.is_fixo %}
-                  <span class="badge bg-primary">Sim</span>
-                {% else %}
-                  <span class="text-muted">—</span>
-                {% endif %}
-              </td>
-              <td class="text-center">
-                <button class="btn btn-outline-primary btn-sm" data-bs-toggle="modal" data-bs-target="#editModal{{ t.id }}">
-                  <i class="bi bi-pencil"></i>
-                </button>
-                <form method="POST" action="{{ url_for('excluir_transacao', id=t.id) }}" class="d-inline">
-                  <button type="submit" class="btn btn-outline-danger btn-sm" onclick="return confirm('Excluir esta transação?')">
-                    <i class="bi bi-trash"></i>
+            {% if transacoes %}
+              {% for t in transacoes %}
+              <tr class="{% if t.tipo == 'despesa' %}table-danger{% else %}table-success{% endif %}">
+                <td class="ps-3 fw-medium">{{ t.data.strftime('%d/%m/%Y') }}</td>
+                <td>
+                  <span class="badge {% if t.tipo == 'despesa' %}bg-danger{% elif t.tipo == 'dizimo' %}bg-success{% elif t.tipo == 'oferta' %}bg-info{% else %}bg-warning text-dark{% endif %}">
+                    {{ t.tipo|title }}
+                  </span>
+                </td>
+                <td>{{ t.categoria }}</td>
+                <td>
+                  <span class="badge bg-secondary">
+                    {% if t.metodo == 'pix' %}Pix{% elif t.metodo == 'dinheiro' %}Dinheiro{% else %}Cartão{% endif %}
+                  </span>
+                </td>
+                <td class="text-end fw-bold">R$ {{ "%.2f"|format(t.valor) }}</td>
+                <td>
+                  {% if t.is_fixo %}
+                    <span class="badge bg-primary">Sim</span>
+                  {% else %}
+                    <span class="text-muted">—</span>
+                  {% endif %}
+                </td>
+                <td class="text-center">
+                  <button class="btn btn-outline-primary btn-sm" data-bs-toggle="modal" data-bs-target="#editModal{{ t.id }}">
+                    <i class="bi bi-pencil"></i>
                   </button>
-                </form>
-              </td>
-            </tr>
-
-            <!-- MODAL DE EDIÇÃO COM DATA -->
-            <div class="modal fade" id="editModal{{ t.id }}" tabindex="-1">
-              <div class="modal-dialog modal-sm">
-                <div class="modal-content">
-                  <div class="modal-header bg-primary text-white">
-                    <h6 class="modal-title">Editar Transação</h6>
-                    <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
-                  </div>
-                  <form method="POST" action="{{ url_for('editar_transacao', id=t.id) }}">
-                    <div class="modal-body">
-                      <div class="mb-2">
-                        <label class="form-label small">Data</label>
-                        <input type="date" name="data_transacao" class="form-control form-control-sm" 
-                               value="{{ t.data.strftime('%Y-%m-%d') }}" required>
-                      </div>
-                      <div class="mb-2">
-                        <label class="form-label small">Tipo</label>
-                        <select name="tipo" class="form-select form-select-sm" required>
-                          <option value="dizimo" {% if t.tipo == 'dizimo' %}selected{% endif %}>Dízimo</option>
-                          <option value="oferta" {% if t.tipo == 'oferta' %}selected{% endif %}>Oferta</option>
-                          <option value="doacao" {% if t.tipo == 'doacao' %}selected{% endif %}>Doação</option>
-                          <option value="despesa" {% if t.tipo == 'despesa' %}selected{% endif %}>Despesa</option>
-                        </select>
-                      </div>
-                      <div class="mb-2">
-                        <label class="form-label small">Categoria</label>
-                        <input type="text" name="categoria" class="form-control form-control-sm" value="{{ t.categoria }}" required>
-                      </div>
-                      <div class="mb-2">
-                        <label class="form-label small">Valor</label>
-                        <input type="number" step="0.01" name="valor" class="form-control form-control-sm" value="{{ t.valor }}" required>
-                      </div>
-                      <div class="mb-2">
-                        <label class="form-label small">Método</label>
-                        <select name="metodo" class="form-select form-select-sm" required>
-                          <option value="dinheiro" {% if t.metodo == 'dinheiro' %}selected{% endif %}>Dinheiro</option>
-                          <option value="pix" {% if t.metodo == 'pix' %}selected{% endif %}>Pix</option>
-                          <option value="cartao" {% if t.metodo == 'cartao' %}selected{% endif %}>Cartão</option>
-                        </select>
-                      </div>
-                      <div class="mb-2">
-                        <label class="form-label small">Fixo Mensal?</label>
-                        <select name="is_fixo" class="form-select form-select-sm">
-                          <option value="0" {% if not t.is_fixo %}selected{% endif %}>Não</option>
-                          <option value="1" {% if t.is_fixo %}selected{% endif %}>Sim</option>
-                        </select>
-                      </div>
-                    </div>
-                    <div class="modal-footer">
-                      <button type="button" class="btn btn-secondary btn-sm" data-bs-dismiss="modal">Cancelar</button>
-                      <button type="submit" class="btn btn-primary btn-sm">Salvar</button>
-                    </div>
+                  <form method="POST" action="{{ url_for('excluir_transacao', id=t.id) }}" class="d-inline">
+                    <button type="submit" class="btn btn-outline-danger btn-sm" onclick="return confirm('Excluir esta transação?')">
+                      <i class="bi bi-trash"></i>
+                    </button>
                   </form>
+                </td>
+              </tr>
+
+              <!-- MODAL DE EDIÇÃO -->
+              <div class="modal fade" id="editModal{{ t.id }}" tabindex="-1">
+                <div class="modal-dialog modal-sm">
+                  <div class="modal-content">
+                    <div class="modal-header bg-primary text-white">
+                      <h6 class="modal-title">Editar Transação</h6>
+                      <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+                    </div>
+                    <form method="POST" action="{{ url_for('editar_transacao', id=t.id) }}">
+                      <div class="modal-body">
+                        <div class="mb-2">
+                          <label class="form-label small">Data</label>
+                          <input type="date" name="data_transacao" class="form-control form-control-sm" 
+                                 value="{{ t.data.strftime('%Y-%m-%d') }}" required>
+                        </div>
+                        <div class="mb-2">
+                          <label class="form-label small">Tipo</label>
+                          <select name="tipo" class="form-select form-select-sm" required>
+                            <option value="dizimo" {% if t.tipo == 'dizimo' %}selected{% endif %}>Dízimo</option>
+                            <option value="oferta" {% if t.tipo == 'oferta' %}selected{% endif %}>Oferta</option>
+                            <option value="doacao" {% if t.tipo == 'doacao' %}selected{% endif %}>Doação</option>
+                            <option value="despesa" {% if t.tipo == 'despesa' %}selected{% endif %}>Despesa</option>
+                          </select>
+                        </div>
+                        <div class="mb-2">
+                          <label class="form-label small">Categoria</label>
+                          <input type="text" name="categoria" class="form-control form-control-sm" value="{{ t.categoria }}" required>
+                        </div>
+                        <div class="mb-2">
+                          <label class="form-label small">Valor</label>
+                          <input type="number" step="0.01" name="valor" class="form-control form-control-sm" value="{{ t.valor }}" required>
+                        </div>
+                        <div class="mb-2">
+                          <label class="form-label small">Método</label>
+                          <select name="metodo" class="form-select form-select-sm" required>
+                            <option value="dinheiro" {% if t.metodo == 'dinheiro' %}selected{% endif %}>Dinheiro</option>
+                            <option value="pix" {% if t.metodo == 'pix' %}selected{% endif %}>Pix</option>
+                            <option value="cartao" {% if t.metodo == 'cartao' %}selected{% endif %}>Cartão</option>
+                          </select>
+                        </div>
+                        <div class="mb-2">
+                          <label class="form-label small">Fixo Mensal?</label>
+                          <select name="is_fixo" class="form-select form-select-sm">
+                            <option value="0" {% if not t.is_fixo %}selected{% endif %}>Não</option>
+                            <option value="1" {% if t.is_fixo %}selected{% endif %}>Sim</option>
+                          </select>
+                        </div>
+                      </div>
+                      <div class="modal-footer">
+                        <button type="button" class="btn btn-secondary btn-sm" data-bs-dismiss="modal">Cancelar</button>
+                        <button type="submit" class="btn btn-primary btn-sm">Salvar</button>
+                      </div>
+                    </form>
+                  </div>
                 </div>
               </div>
-            </div>
+              {% endfor %}
             {% else %}
-            <tr>
-              <td colspan="7" class="text-center text-muted py-4">
-                <i class="bi bi-inbox"></i> Nenhuma transação neste mês.
-              </td>
-            </tr>
-            {% endfor %}
+              <tr>
+                <td colspan="7" class="text-center text-muted py-4">
+                  <i class="bi bi-inbox"></i> Nenhuma transação neste mês.
+                </td>
+              </tr>
+            {% endif %}
           </tbody>
         </table>
       </div>

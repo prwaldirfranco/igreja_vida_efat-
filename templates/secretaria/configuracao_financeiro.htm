@@ -1,0 +1,88 @@
+{% extends "includes/_layout.html" %}
+{% block title %}Configurar Financeiro{% endblock %}
+
+{% block content %}
+<div class="container-fluid py-4">
+  <div class="d-flex align-items-center mb-4">
+    <a href="{{ url_for('financeiro') }}" class="btn btn-outline-secondary btn-sm me-3">
+      <i class="bi bi-arrow-left"></i> Voltar
+    </a>
+    <h2 class="h4 mb-0">
+      <i class="bi bi-gear"></i> Configuração Financeira
+    </h2>
+  </div>
+
+  <div class="row justify-content-center">
+    <div class="col-lg-6">
+      <div class="card border-0 shadow-sm">
+        <div class="card-header bg-white">
+          <h6 class="mb-0">
+            <i class="bi bi-calculator"></i> Ajustes para Relatórios
+          </h6>
+        </div>
+        <div class="card-body">
+          <form method="POST">
+            <div class="mb-3">
+              <label class="form-label">
+                <i class="bi bi-shield-check"></i> Provisão para Custos Extras (R$)
+              </label>
+              <input type="number" 
+                     name="provisao_extras" 
+                     class="form-control" 
+                     value="{{ config.provisao_extras }}" 
+                     step="0.01" 
+                     min="0" 
+                     required>
+              <small class="text-muted">
+                Valor reservado mensalmente para reformas, eventos, emergências, etc.
+              </small>
+            </div>
+
+            <div class="mb-3">
+              <label class="form-label">
+                <i class="bi bi-cash-stack"></i> Salário Médio dos Dizimistas (R$)
+              </label>
+              <input type="number" 
+                     name="salario_medio" 
+                     class="form-control" 
+                     value="{{ config.salario_medio }}" 
+                     step="0.01" 
+                     min="0" 
+                     required>
+              <small class="text-muted">
+                Usado para calcular quantos dizimistas são necessários (10% do salário).
+              </small>
+            </div>
+
+            <div class="d-grid">
+              <button type="submit" class="btn btn-primary">
+                <i class="bi bi-check2"></i> Salvar Configuração
+              </button>
+            </div>
+          </form>
+        </div>
+        <div class="card-footer bg-light text-muted small">
+          <i class="bi bi-info-circle"></i>
+          Última atualização: 
+          {{ config.data_atualizacao.strftime('%d/%m/%Y às %H:%M') if config.data_atualizacao else 'Nunca' }}
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Dica Visual -->
+  <div class="row mt-4">
+    <div class="col-lg-6">
+      <div class="alert alert-info d-flex align-items-start">
+        <i class="bi bi-lightbulb fs-4 me-3"></i>
+        <div>
+          <strong>Dica:</strong> 
+          Ajuste a <strong>provisão</strong> para refletir gastos futuros. 
+          O <strong>salário médio</strong> ajuda a calcular quantos dizimistas são necessários 
+          para cobrir custos extras.
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}

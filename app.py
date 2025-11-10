@@ -1,5 +1,5 @@
 import os
-from flask import Flask, render_template, request, redirect, url_for, flash, send_file, make_response
+from flask import Flask, render_template, request, redirect, url_for, flash, send_file, make_response, jsonify
 from flask_sqlalchemy import SQLAlchemy
 from flask_migrate import Migrate
 from flask_wtf import FlaskForm
@@ -21,7 +21,9 @@ import pdfkit
 import csv
 from io import StringIO, BytesIO
 
-# ---- CONFIGURAÇÕES ----
+# ================================
+# CONFIGURAÇÕES
+# ================================
 load_dotenv()
 
 BASE_DIR = os.path.abspath(os.path.dirname(__file__))
@@ -31,7 +33,9 @@ app.config['SECRET_KEY'] = os.getenv("SECRET_KEY", "superseguro123")
 app.config['SQLALCHEMY_DATABASE_URI'] = f"sqlite:///{os.path.join(BASE_DIR, 'app.db')}"
 app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
 app.config['UPLOAD_FOLDER'] = os.path.join(BASE_DIR, 'uploads')
-app.config['ALLOWED_EXTENSIONS'] = {'png', 'jpg', 'jpeg', 'gif'}
+app.config['ALLOWED_EXTENSIONS'] = {
+    'png', 'jpg', 'jpeg', 'gif', 'webp', 'svg', 'bmp', 'tiff', 'heic', 'avif'
+}
 
 os.makedirs(app.config['UPLOAD_FOLDER'], exist_ok=True)
 
@@ -43,14 +47,30 @@ login_manager.login_view = "login"
 login_manager.login_message = "Faça login para acessar esta página."
 login_manager.login_message_category = "info"
 
-# ---- MODELOS ----
+# ================================
+# MODELOS
+# ================================
+class Configuracao(db.Model):
+    id = db.Column(db.Integer, primary_key=True)
+    provisao_extras = db.Column(db.Float, default=0.0)  # corrigido
+    salario_medio = db.Column(db.Float, default=2000.0)
+    data_atualizacao = db.Column(db.DateTime, default=datetime.utcnow)
+
+# Modelo para armazenar as configurações financeiras da igreja
+class ConfiguracaoFinanceira(db.Model):
+    id = db.Column(db.Integer, primary_key=True)
+    meta_dizimistas = db.Column(db.Integer, nullable=False, default=0)
+    valor_meta = db.Column(db.Float, nullable=False, default=0.0)
+    data_configuracao = db.Column(db.DateTime, default=datetime.utcnow)
+
+
 class User(UserMixin, db.Model):
     __tablename__ = 'user'
     id = db.Column(db.Integer, primary_key=True)
     nome = db.Column(db.String(100), nullable=False)
     email = db.Column(db.String(100), unique=True, nullable=False)
     senha = db.Column(db.String(200), nullable=False)
-    nivel_acesso = db.Column(db.Integer, default=2)  # 1=Admin, 2=Secretária, 3=Financeiro, 4=Visualizador
+    nivel_acesso = db.Column(db.Integer, default=2)
     is_secretaria = db.Column(db.Boolean, default=False)
 
     def __repr__(self):
@@ -75,8 +95,9 @@ class Membro(db.Model):
     batizado = db.Column(db.Boolean, default=False)
     data_batismo = db.Column(db.Date)
     ministerio = db.Column(db.String(100))
-    foto = db.Column(db.String(100), default='default.jpg')  # CORRIGIDO: apenas uma vez
+    foto = db.Column(db.String(100), default='default.jpg')
     data_cadastro = db.Column(db.DateTime, default=datetime.utcnow)
+    status = db.Column(db.String(20), default='ativo')
     ativo = db.Column(db.Boolean, default=True)
 
     def __repr__(self):
@@ -111,12 +132,27 @@ class Ministerio(db.Model):
     def __repr__(self):
         return f'<Ministerio {self.nome}>'
 
-# ---- LOGIN ----
+class CustoFixo(db.Model):
+    __tablename__ = 'custos_fixos'
+    id = db.Column(db.Integer, primary_key=True)
+    nome = db.Column(db.String(100), nullable=False)
+    valor = db.Column(db.Float, nullable=False)
+    ativo = db.Column(db.Boolean, default=True)
+    mes_referencia = db.Column(db.String(7))  # formato: '2025-11', se quiser vincular a um mês
+
+    def __repr__(self):
+        return f"<CustoFixo {self.nome} - R$ {self.valor}>"
+
+# ================================
+# LOGIN
+# ================================
 @login_manager.user_loader
 def load_user(user_id):
     return User.query.get(int(user_id))
 
-# ---- DECORADORES DE PERMISSÃO ----
+# ================================
+# DECORADORES DE PERMISSÃO
+# ================================
 def admin_required(f):
     @wraps(f)
     def decorated_function(*args, **kwargs):
@@ -148,7 +184,9 @@ def financeiro_required(f):
         return f(*args, **kwargs)
     return decorated_function
 
-# ---- FORMULÁRIOS ----
+# ================================
+# FORMULÁRIOS
+# ================================
 class LoginForm(FlaskForm):
     email = StringField("Email", validators=[DataRequired(), Email()], render_kw={"autocomplete": "username"})
     senha = PasswordField("Senha", validators=[DataRequired()], render_kw={"autocomplete": "current-password"})
@@ -161,14 +199,16 @@ class UsuarioForm(FlaskForm):
     nivel_acesso = SelectField("Nível de Acesso", choices=[
         (1, "Admin (acesso total)"),
         (2, "Secretária (membros + eventos)"),
-        (3, "Financeiro (apenas financeiro)"),
-        (4, "Visualizador (apenas relatórios)")
+        (3, "Secretária (membros)"),
+        (4, "Financeiro (apenas financeiro)"),
+        (5, "Visualizador (apenas relatórios)")
     ], coerce=int, validators=[DataRequired()])
     submit = SubmitField("Criar Usuário")
 
+# MembroForm — CORRIGIDO (SÓ UM __init__)
 class MembroForm(FlaskForm):
     nome = StringField("Nome Completo", validators=[DataRequired()])
-    email = StringField("E-mail", validators=[Email()])
+    email = StringField("E-mail", validators=[Email(), Optional()])
     telefone = StringField("Telefone Fixo")
     celular = StringField("Celular (WhatsApp)", validators=[DataRequired()])
     cep = StringField("CEP")
@@ -178,20 +218,31 @@ class MembroForm(FlaskForm):
     estado = StringField("Estado")
     data_nascimento = DateField("Data de Nascimento", format="%Y-%m-%d")
     estado_civil = SelectField("Estado Civil", choices=[
-        ("", "Selecione..."),
-        ("solteiro", "Solteiro(a)"),
-        ("casado", "Casado(a)"),
-        ("viuvo", "Viúvo(a)"),
-        ("divorciado", "Divorciado(a)")
+        ('', '--'),
+        ('solteiro', 'Solteiro(a)'),
+        ('casado', 'Casado(a)'),
+        ('viuvo', 'Viúvo(a)'),
+        ('divorciado', 'Divorciado(a)')
     ])
     conjuge = StringField("Nome do Cônjuge")
     filhos = IntegerField("Quantidade de Filhos", default=0)
     batizado = BooleanField("É Batizado(a)?")
     data_batismo = DateField("Data do Batismo", format="%Y-%m-%d")
-    ministerio = StringField("Ministério que Participa")
-    foto = FileField("Foto", validators=[FileAllowed(['jpg', 'png', 'jpeg', 'gif'])])
-    ativo = BooleanField("Membro Ativo", default=True)
+    foto = FileField("Foto", validators=[
+        FileAllowed(['jpg','png','jpeg','gif','webp','svg','bmp','tiff','heic','avif'], 'Apenas imagens!')
+    ])
+    ministerio = SelectField("Ministério", validators=[Optional()])
+    status = SelectField("Status", validators=[DataRequired()])
+
     submit = SubmitField("Salvar Membro")
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.ministerio.choices = [('', '-- Nenhum --')] + [(m.nome, m.nome) for m in Ministerio.query.order_by(Ministerio.nome).all()]
+        self.status.choices = [
+            ("ativo", "Ativo"), ("inativo", "Inativo"), ("afastado", "Afastado"),
+            ("nao_membro", "Não Membro"), ("visitante", "Visitante")
+        ]
 
 class TransacaoForm(FlaskForm):
     data_transacao = DateField("Data da Transação", format="%Y-%m-%d", validators=[DataRequired()], default=datetime.now().date())
@@ -228,12 +279,16 @@ class MinisterioForm(FlaskForm):
     descricao = TextAreaField("Descrição", validators=[DataRequired()])
     submit = SubmitField("Salvar")
 
-# ---- CONTEXT PROCESSOR ----
+# ================================
+# CONTEXT PROCESSOR
+# ================================
 @app.context_processor
 def inject_year():
     return {'current_year': datetime.now().year}
 
-# ---- ROTAS PÚBLICAS ----
+# ================================
+# ROTAS PÚBLICAS
+# ================================
 @app.route('/')
 def index():
     eventos = Evento.query.order_by(Evento.data.asc()).limit(3).all()
@@ -257,7 +312,9 @@ def sobre():
 def contato():
     return render_template('public/contato.html')
 
-# ---- LOGIN / LOGOUT ----
+# ================================
+# LOGIN / LOGOUT
+# ================================
 @app.route('/login', methods=['GET', 'POST'])
 def login():
     form = LoginForm()
@@ -277,7 +334,9 @@ def logout():
     flash("Logout realizado com sucesso.", "info")
     return redirect(url_for('index'))
 
-# ---- SECRETARIA ----
+# ================================
+# SECRETARIA
+# ================================
 @app.route('/secretaria')
 @login_required
 def secretaria():
@@ -294,7 +353,42 @@ def secretaria():
                            transacoes_total=transacoes_total,
                            eventos=eventos)
 
-# ---- USUÁRIOS ----
+@app.route('/custos-fixos/adicionar', methods=['POST'])
+@login_required
+def adicionar_custo_fixo():
+    nome = request.form['nome']
+    valor = float(request.form['valor'])
+    mes_referencia = request.form.get('mes_referencia', None)
+    ativo = 'ativo' in request.form
+
+    novo = CustoFixo(nome=nome, valor=valor, ativo=ativo, mes_referencia=mes_referencia)
+    db.session.add(novo)
+    db.session.commit()
+    flash('Custo fixo adicionado com sucesso!', 'success')
+    return redirect(url_for('custos_fixos'))
+
+@app.route('/custos-fixos')
+@login_required
+def custos_fixos():
+    custos = CustoFixo.query.order_by(CustoFixo.nome.asc()).all()
+    return render_template('secretaria/custos_fixos.html', custos=custos)
+
+@app.route('/custos-fixos/editar/<int:id>', methods=['POST'])
+@login_required
+def editar_custo_fixo(id):
+    custo = CustoFixo.query.get_or_404(id)
+    custo.nome = request.form['nome']
+    custo.valor = float(request.form['valor'])
+    custo.mes_referencia = request.form.get('mes_referencia', None)
+    custo.ativo = 'ativo' in request.form
+    db.session.commit()
+    flash('Custo fixo atualizado com sucesso!', 'success')
+    return redirect(url_for('custos_fixos'))
+
+
+# ================================
+# USUÁRIOS
+# ================================
 @app.route('/secretaria/usuarios/novo', methods=['GET', 'POST'])
 @admin_required
 @login_required
@@ -327,7 +421,9 @@ def listar_usuarios():
     usuarios = User.query.order_by(User.nivel_acesso, User.nome).all()
     return render_template('secretaria/usuarios_list.html', usuarios=usuarios)
 
-# ---- MINISTÉRIOS ----
+# ================================
+# MINISTÉRIOS
+# ================================
 @app.route('/secretaria/ministerios')
 @secretaria_required
 @login_required
@@ -377,7 +473,9 @@ def excluir_ministerio(id):
     flash("Ministério excluído.", "info")
     return redirect(url_for('listar_ministerios'))
 
-# ---- MEMBROS ----
+# ================================
+# MEMBROS - LISTAR
+# ================================
 @app.route('/membros')
 @secretaria_required
 @login_required
@@ -399,77 +497,96 @@ def listar_membros():
 
     return render_template('secretaria/membros_list.html', membros=membros, ministerios=ministerios)
 
+# ================================
+# MEMBROS - EDITAR (AJAX)
+# ================================
 @app.route('/membro/editar/<int:id>', methods=['GET', 'POST'])
 @secretaria_required
 @login_required
 def editar_membro(id):
     membro = Membro.query.get_or_404(id)
-    ministerios = Ministerio.query.order_by(Ministerio.nome).all()
 
     if request.method == 'POST':
-        membro.nome = request.form['nome']
-        membro.email = request.form['email']
-        membro.celular = request.form['celular']
-        membro.estado_civil = request.form['estado_civil']
+        membro.nome = request.form.get('nome')
+        membro.email = request.form.get('email') or None
+        membro.celular = request.form.get('celular')
+        membro.ministerio = request.form.get('ministerio')
+        membro.estado_civil = request.form.get('estado_civil') or None
+        membro.status = request.form.get('status')
 
-        min_id = request.form.get('ministerio_id')
-        if min_id:
-            ministerio = Ministerio.query.get(min_id)
-            membro.ministerio = ministerio.nome if ministerio else ''
-        else:
-            membro.ministerio = ''
+        if 'foto' in request.files and request.files['foto'].filename:
+            filename = secure_filename(request.files['foto'].filename)
+            request.files['foto'].save(os.path.join(app.config['UPLOAD_FOLDER'], filename))
+            membro.foto = filename
 
-        if 'foto' in request.files:
-            file = request.files['foto']
-            if file and file.filename != '':
-                filename = secure_filename(file.filename)
-                file.save(os.path.join('static/fotos_membros', filename))
-                membro.foto = filename
-
+        membro.ativo = (membro.status == 'ativo')
         db.session.commit()
+
+        if request.headers.get('X-Requested-With') == 'XMLHttpRequest':
+            return jsonify({
+                'success': True,
+                'membro': {
+                    'id': membro.id,
+                    'nome': membro.nome,
+                    'email': membro.email,
+                    'celular': membro.celular,
+                    'ministerio': membro.ministerio,
+                    'status': membro.status,
+                    'foto': membro.foto
+                }
+            })
+
         flash("Membro atualizado com sucesso!", "success")
         return redirect(url_for('listar_membros'))
 
-    return redirect(url_for('listar_membros'))
+    return "Método não permitido", 405
 
+# ================================
+# MEMBROS - NOVO (CORRIGIDO)
+# ================================
 @app.route('/membro/novo', methods=['GET', 'POST'])
 @secretaria_required
 @login_required
 def novo_membro():
     form = MembroForm()
+
     if form.validate_on_submit():
-        filename = None
+        filename = 'default.jpg'
         if form.foto.data:
             filename = secure_filename(form.foto.data.filename)
             form.foto.data.save(os.path.join(app.config['UPLOAD_FOLDER'], filename))
 
         membro = Membro(
             nome=form.nome.data,
-            email=form.email.data,
-            telefone=form.telefone.data,
+            email=form.email.data or None,
+            telefone=form.telefone.data or None,
             celular=form.celular.data,
-            cep=form.cep.data,
-            endereco=form.endereco.data,
-            bairro=form.bairro.data,
-            cidade=form.cidade.data,
-            estado=form.estado.data,
+            cep=form.cep.data or None,
+            endereco=form.endereco.data or None,
+            bairro=form.bairro.data or None,
+            cidade=form.cidade.data or "São Paulo",
+            estado=form.estado.data or "SP",
             data_nascimento=form.data_nascimento.data,
-            estado_civil=form.estado_civil.data,
-            conjuge=form.conjuge.data,
-            filhos=form.filhos.data,
+            estado_civil=form.estado_civil.data or None,
+            conjuge=form.conjuge.data or None,
+            filhos=form.filhos.data or 0,
             batizado=form.batizado.data,
             data_batismo=form.data_batismo.data,
             ministerio=form.ministerio.data,
             foto=filename,
-            ativo=form.ativo.data
+            status=form.status.data,
+            ativo=(form.status.data == 'ativo')
         )
         db.session.add(membro)
         db.session.commit()
         flash("Membro cadastrado com sucesso!", "success")
         return redirect(url_for('listar_membros'))
 
-    return render_template('secretaria/membros_form.html', form=form)
+    return render_template('secretaria/membros_form.html', form=form, title="Novo Membro")
 
+# ================================
+# MEMBROS - EXCLUIR
+# ================================
 @app.route('/membro/excluir/<int:id>', methods=['POST'])
 @secretaria_required
 @login_required
@@ -480,6 +597,9 @@ def excluir_membro(id):
     flash(f"Membro {membro.nome} excluído!", "info")
     return redirect(url_for('listar_membros'))
 
+# ================================
+# IMPORTAR MEMBROS
+# ================================
 @app.route('/membros/importar', methods=['GET', 'POST'])
 @secretaria_required
 @login_required
@@ -516,7 +636,8 @@ def importar_membros():
                         cidade=row.get('cidade', 'Macae').strip(),
                         estado=row.get('estado', 'RJ').strip(),
                         conjuge=row.get('conjuge', '').strip(),
-                        ativo=True
+                        ativo=True,
+                        status='ativo'
                     )
                     db.session.add(membro)
                     count += 1
@@ -528,80 +649,107 @@ def importar_membros():
 
     return render_template('secretaria/importar_membros.html')
 
-# ---- FINANCEIRO ----
+# ================================
+# FINANCEIRO
+# ================================
+# =========================================
+# Função para gerar dados do gráfico financeiro
+# =========================================
+def gerar_dados_grafico():
+    """
+    Gera dados básicos para o gráfico financeiro.
+    Você pode depois trocar por consultas reais ao banco.
+    """
+    meses_grafico = ["Jan", "Fev", "Mar", "Abr", "Mai", "Jun", "Jul", "Ago", "Set", "Out", "Nov", "Dez"]
+    saldos_grafico = [0] * 12  # lista de 12 valores zerados (um por mês)
+    return meses_grafico, saldos_grafico
+
 @app.route('/financeiro', methods=['GET', 'POST'])
-@financeiro_required
 @login_required
 def financeiro():
     form = TransacaoForm()
-    form.membro_id.choices = [(0, '-- Sem membro --')] + [(m.id, m.nome) for m in Membro.query.order_by(Membro.nome).all()]
 
+    # Preenche as opções do campo membro_id dinamicamente
+    membros = Membro.query.order_by(Membro.nome).all()
+    form.membro_id.choices = [(0, '-- Nenhum --')] + [(m.id, m.nome) for m in membros]
+
+    # Filtro de mês
     mes = request.args.get('mes', datetime.now().strftime('%Y-%m'))
+    ano, mes_num = map(int, mes.split('-'))
+    inicio_mes = datetime(ano, mes_num, 1)
+    proximo_mes = inicio_mes + timedelta(days=32)
+    fim_mes = datetime(proximo_mes.year, proximo_mes.month, 1) - timedelta(days=1)
 
-    entradas = Transacao.query.filter(
-        Transacao.tipo.in_(['dizimo', 'oferta', 'doacao']),
-        func.strftime('%Y-%m', Transacao.data) == mes
-    ).all()
-    total_entradas = sum(t.valor for t in entradas)
-
-    saidas = Transacao.query.filter(
-        Transacao.tipo == 'despesa',
-        func.strftime('%Y-%m', Transacao.data) == mes
-    ).all()
-    total_saidas = sum(t.valor for t in saidas)
-
-    saldo = total_entradas - total_saidas
-
-    fixos = Transacao.query.filter(Transacao.is_fixo == True, Transacao.tipo == 'despesa').all()
-    total_fixos = sum(f.valor for f in fixos)
-    saldo_final = saldo - total_fixos
-
-    meses_grafico = []
-    saldos_grafico = []
-    for i in range(5, -1, -1):
-        data_mes = (datetime.now() - timedelta(days=30*i)).strftime('%Y-%m')
-        entradas_mes = sum(t.valor for t in Transacao.query.filter(
-            Transacao.tipo.in_(['dizimo', 'oferta', 'doacao']),
-            func.strftime('%Y-%m', Transacao.data) == data_mes
-        ).all())
-        saidas_mes = sum(t.valor for t in Transacao.query.filter(
-            Transacao.tipo == 'despesa',
-            func.strftime('%Y-%m', Transacao.data) == data_mes
-        ).all())
-        saldo_mes = entradas_mes - saidas_mes - total_fixos
-        meses_grafico.append((datetime.now() - timedelta(days=30*i)).strftime('%b/%Y'))
-        saldos_grafico.append(round(saldo_mes, 2))
-
+    # Inserção de nova transação
     if form.validate_on_submit():
-        t = Transacao(
+        nova = Transacao(
             data=form.data_transacao.data,
             tipo=form.tipo.data,
             categoria=form.categoria.data,
             valor=form.valor.data,
             metodo=form.metodo.data,
-            membro_id=form.membro_id.data if form.membro_id.data != 0 else None,
-            is_fixo=bool(form.is_fixo.data)
+            membro_id=form.membro_id.data if form.membro_id.data else None,
+            is_fixo=bool(int(form.is_fixo.data))
         )
-        db.session.add(t)
+        db.session.add(nova)
         db.session.commit()
-        flash(f"Transação de R$ {form.valor.data:.2f} registrada para {form.data_transacao.data.strftime('%d/%m/%Y')}!", "success")
+        flash('Transação registrada com sucesso!', 'success')
         return redirect(url_for('financeiro', mes=mes))
 
+    # Carregar transações do mês
     transacoes = Transacao.query.filter(
-        func.strftime('%Y-%m', Transacao.data) == mes
+        Transacao.data >= inicio_mes,
+        Transacao.data <= fim_mes
     ).order_by(Transacao.data.desc()).all()
 
-    return render_template('secretaria/financeiro.html',
-                           form=form,
-                           transacoes=transacoes,
-                           total_entradas=total_entradas,
-                           total_saidas=total_saidas,
-                           saldo=saldo,
-                           total_fixos=total_fixos,
-                           saldo_final=saldo_final,
-                           mes=mes,
-                           meses_grafico=meses_grafico,
-                           saldos_grafico=saldos_grafico)
+    # Calcular totais
+    total_entradas = sum(t.valor for t in transacoes if t.tipo in ['dizimo', 'oferta', 'doacao'])
+    total_saidas = sum(t.valor for t in transacoes if t.tipo == 'despesa')
+    total_fixos = sum(t.valor for t in transacoes if t.is_fixo)
+
+        # Configurações financeiras
+    # OBS: usar o modelo Configuracao (que contém provisao_extras e salario_medio)
+    config = Configuracao.query.first()
+    if not config:
+        config = Configuracao()  # usa os defaults do modelo (provisao_extras=0.0, salario_medio=2000.0)
+        db.session.add(config)
+        db.session.commit()
+
+    saldo_final = total_entradas - total_saidas
+    # garante que provisao_extras exista (float)
+    provisao = getattr(config, 'provisao_extras', 0.0) or 0.0
+    saldo_real = saldo_final - provisao - total_fixos
+
+
+    # Cálculo de dizimistas necessários (baseado nos fixos)
+    media_dizimo = 151  # média por dizimista (ajuste se quiser)
+    dizimistas_necessarios = int(round(total_fixos / media_dizimo, 0))
+
+    # Geração do gráfico (últimos 6 meses)
+    meses_grafico, saldos_grafico = gerar_dados_grafico()
+
+    # 🟩 NOVOS CAMPOS
+    mes_atual = datetime.now().strftime('%B/%Y').capitalize()  # exemplo: Novembro/2025
+    saldo_status = "positivo" if saldo_final >= 0 else "negativo"
+
+    return render_template(
+        'secretaria/financeiro.html',
+        form=form,
+        transacoes=transacoes,
+        total_entradas=total_entradas,
+        total_saidas=total_saidas,
+        total_fixos=total_fixos,
+        saldo_real=saldo_real,
+        provisao_extras=config.provisao_extras,
+        saldo_final=saldo_final,
+        dizimistas_necessarios=dizimistas_necessarios,
+        mes=mes,
+        meses_grafico=meses_grafico,
+        saldos_grafico=saldos_grafico,
+        mes_atual=mes_atual,
+        saldo_status=saldo_status
+    )
+
 
 @app.route('/financeiro/editar/<int:id>', methods=['GET', 'POST'])
 @financeiro_required
@@ -630,7 +778,28 @@ def excluir_transacao(id):
     flash("Transação excluída!", "info")
     return redirect(url_for('financeiro', mes=request.args.get('mes', datetime.now().strftime('%Y-%m'))))
 
-# ---- EXPORTAÇÃO ----
+@app.route('/financeiro/configuracao', methods=['GET', 'POST'])
+@financeiro_required
+@login_required
+def configurar_financeiro():
+    config = Configuracao.query.first()
+    if not config:
+        config = Configuracao()
+        db.session.add(config)
+        db.session.commit()
+
+    if request.method == 'POST':
+        config.provisao_extras = float(request.form['provisao_extras'])
+        config.salario_medio = float(request.form['salario_medio'])
+        db.session.commit()
+        flash("Configuração salva!", "success")
+        return redirect(url_for('financeiro'))
+
+    return render_template('secretaria/configuracao_financeiro.html', config=config)
+
+# ================================
+# EXPORTAÇÃO
+# ================================
 @app.route('/exportar/pdf')
 @financeiro_required
 @login_required
@@ -697,7 +866,9 @@ def exportar_excel():
         mimetype='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
     )
 
-# ---- EVENTOS ----
+# ================================
+# EVENTOS
+# ================================
 @app.route('/secretaria/eventos/novo', methods=['GET', 'POST'])
 @secretaria_required
 @login_required
@@ -726,7 +897,9 @@ def novo_evento():
 def uploaded_file(filename):
     return send_file(os.path.join(app.config['UPLOAD_FOLDER'], filename))
 
-# ---- INICIALIZAÇÃO ----
+# ================================
+# INICIALIZAÇÃO
+# ================================
 def create_initial_data():
     with app.app_context():
         inspector = db.inspect(db.engine)
@@ -763,4 +936,3 @@ if __name__ == '__main__':
     with app.app_context():
         create_initial_data()
     app.run(debug=True)
-app.run(host="0.0.0.0", port=5000)

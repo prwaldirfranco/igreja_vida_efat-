@@ -1,11 +1,10 @@
 {% extends "includes/_layout.html" %}
 {% block title %}Membros{% endblock %}
-
 {% block content %}
 <div class="container-fluid py-4">
   <div class="d-flex justify-content-between align-items-center mb-4">
     <h2 class="h4 mb-0">Membros</h2>
-    <div>
+    <div class="d-flex gap-2">
       <a href="{{ url_for('novo_membro') }}" class="btn btn-primary btn-sm">
         Novo Membro
       </a>
@@ -15,20 +14,36 @@
     </div>
   </div>
 
-  <!-- BARRA DE BUSCA -->
-  <form method="GET" class="mb-3">
-    <div class="input-group">
-      <input type="text" name="q" class="form-control" placeholder="Buscar por nome, celular ou e-mail..." value="{{ request.args.get('q', '') }}">
-      <button type="submit" class="btn btn-outline-secondary">
-        Buscar
-      </button>
-      {% if request.args.get('q') %}
-      <a href="{{ url_for('listar_membros') }}" class="btn btn-outline-danger">
-        Limpar
-      </a>
-      {% endif %}
+  <!-- FILTROS: BUSCA + STATUS -->
+  <div class="row mb-3 g-2">
+    <div class="col-md-6">
+      <form method="GET" class="d-flex gap-2">
+        <input type="text" name="q" class="form-control form-control-sm" placeholder="Buscar por nome, celular ou e-mail..." value="{{ request.args.get('q', '') }}">
+        <button type="submit" class="btn btn-outline-secondary btn-sm">Buscar</button>
+        {% if request.args.get('q') %}
+        <a href="{{ url_for('listar_membros', status=request.args.get('status')) }}" class="btn btn-outline-danger btn-sm">Limpar</a>
+        {% endif %}
+      </form>
     </div>
-  </form>
+    <div class="col-md-6">
+      <form method="GET" class="d-flex gap-2">
+        <select name="status" class="form-select form-select-sm w-auto" onchange="this.form.submit()">
+          <option value="">Todos os Status</option>
+          <option value="ativo" {% if request.args.get('status') == 'ativo' %}selected{% endif %}>Ativo</option>
+          <option value="inativo" {% if request.args.get('status') == 'inativo' %}selected{% endif %}>Inativo</option>
+          <option value="afastado" {% if request.args.get('status') == 'afastado' %}selected{% endif %}>Afastado</option>
+          <option value="nao_membro" {% if request.args.get('status') == 'nao_membro' %}selected{% endif %}>Não Membro</option>
+          <option value="visitante" {% if request.args.get('status') == 'visitante' %}selected{% endif %}>Visitante</option>
+        </select>
+        {% if request.args.get('q') %}
+        <input type="hidden" name="q" value="{{ request.args.get('q') }}">
+        {% endif %}
+        {% if request.args.get('status') and not request.args.get('q') %}
+        <a href="{{ url_for('listar_membros') }}" class="btn btn-outline-secondary btn-sm">Limpar</a>
+        {% endif %}
+      </form>
+    </div>
+  </div>
 
   <div class="card border-0 shadow-sm">
     <div class="card-body p-0">
@@ -41,56 +56,83 @@
               <th>Celular</th>
               <th>E-mail</th>
               <th>Ministério</th>
+              <th>Status</th>
               <th class="text-center">Ações</th>
             </tr>
           </thead>
           <tbody>
             {% for m in membros %}
-            <tr>
+            <tr data-id="{{ m.id }}">
               <td class="ps-3">
-                <img src="{{ url_for('static', filename='fotos_membros/' + (m.foto or 'default.jpg')) }}"
-                     class="rounded-circle" width="40" height="40" alt="{{ m.nome }}">
+                <!-- FOTO COM FALLBACK -->
+                {% if m.foto and m.foto != 'default.jpg' %}
+                  <img src="{{ url_for('uploaded_file', filename=m.foto) }}"
+                       class="rounded-circle object-fit-cover" width="40" height="40"
+                       alt="{{ m.nome }}"
+                       onerror="this.src='{{ url_for('uploaded_file', filename='default.jpg') }}'">
+                {% else %}
+                  <img src="{{ url_for('uploaded_file', filename='default.jpg') }}"
+                       class="rounded-circle object-fit-cover" width="40" height="40"
+                       alt="Sem foto">
+                {% endif %}
               </td>
               <td class="fw-medium">{{ m.nome }}</td>
               <td>{{ m.celular or '-' }}</td>
-              <td><small>{{ m.email or '-' }}</small></td>
+              <td><small class="text-muted">{{ m.email or '-' }}</small></td>
               <td>
                 {% if m.ministerio %}
-                  <span class="badge bg-info">{{ m.ministerio }}</span>
+                  <span class="badge bg-info text-dark">{{ m.ministerio }}</span>
                 {% else %}
                   <span class="text-muted">—</span>
                 {% endif %}
               </td>
+              <td>
+                <span class="badge
+                  {% if m.status == 'ativo' %}bg-success
+                  {% elif m.status == 'inativo' %}bg-secondary
+                  {% elif m.status == 'afastado' %}bg-warning text-dark
+                  {% elif m.status == 'nao_membro' %}bg-info text-dark
+                  {% elif m.status == 'visitante' %}bg-light text-dark border
+                  {% else %}bg-dark text-white{% endif %}">
+                  {{ m.status|replace('_', ' ')|title }}
+                </span>
+              </td>
               <td class="text-center">
+                <!-- BOTÃO EDITAR ABRE MODAL -->
                 <button class="btn btn-outline-primary btn-sm" data-bs-toggle="modal" data-bs-target="#editModal{{ m.id }}">
                   Editar
                 </button>
+                <!-- BOTÃO EXCLUIR -->
                 <form method="POST" action="{{ url_for('excluir_membro', id=m.id) }}" class="d-inline">
-                  <button type="submit" class="btn btn-outline-danger btn-sm" onclick="return confirm('Excluir {{ m.nome }}?')">
+                  <button type="submit" class="btn btn-outline-danger btn-sm" onclick="return confirm('Tem certeza que deseja excluir {{ m.nome }}?')">
                     Excluir
                   </button>
                 </form>
               </td>
             </tr>
 
-            <!-- MODAL DE EDIÇÃO COM FOTO -->
-            <div class="modal fade" id="editModal{{ m.id }}" tabindex="-1">
+            <!-- MODAL DE EDIÇÃO -->
+            <div class="modal fade" id="editModal{{ m.id }}" tabindex="-1" aria-hidden="true">
               <div class="modal-dialog modal-lg">
                 <div class="modal-content">
                   <div class="modal-header bg-primary text-white">
                     <h6 class="modal-title">Editar {{ m.nome }}</h6>
-                    <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+                    <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Fechar"></button>
                   </div>
-                  <form method="POST" action="{{ url_for('editar_membro', id=m.id) }}" enctype="multipart/form-data">
+                  <form method="POST" action="{{ url_for('editar_membro', id=m.id) }}" enctype="multipart/form-data" class="edit-form">
                     <div class="modal-body">
+                      <!-- FOTO ATUAL + UPLOAD -->
                       <div class="text-center mb-3">
-                        <img src="{{ url_for('static', filename='fotos_membros/' + (m.foto or 'default.jpg')) }}"
-                             class="rounded-circle" width="100" height="100" alt="{{ m.nome }}">
+                        <img src="{{ url_for('uploaded_file', filename=(m.foto or 'default.jpg')) }}"
+                             class="rounded-circle object-fit-cover" width="100" height="100"
+                             alt="{{ m.nome }}"
+                             onerror="this.src='{{ url_for('uploaded_file', filename='default.jpg') }}'">
                         <div class="mt-2">
                           <input type="file" name="foto" class="form-control form-control-sm" accept="image/*">
                           <small class="text-muted">Deixe em branco para manter a foto atual</small>
                         </div>
                       </div>
+
                       <div class="row g-3">
                         <div class="col-md-6">
                           <label class="form-label small">Nome</label>
@@ -98,18 +140,18 @@
                         </div>
                         <div class="col-md-6">
                           <label class="form-label small">E-mail</label>
-                          <input type="email" name="email" class="form-control form-control-sm" value="{{ m.email }}">
+                          <input type="email" name="email" class="form-control form-control-sm" value="{{ m.email or '' }}">
                         </div>
                         <div class="col-md-4">
                           <label class="form-label small">Celular</label>
-                          <input type="text" name="celular" class="form-control form-control-sm" value="{{ m.celular }}">
+                          <input type="text" name="celular" class="form-control form-control-sm" value="{{ m.celular or '' }}">
                         </div>
                         <div class="col-md-4">
                           <label class="form-label small">Ministério</label>
-                          <select name="ministerio_id" class="form-select form-select-sm">
+                          <select name="ministerio" class="form-select form-select-sm">
                             <option value="">-- Nenhum --</option>
                             {% for min in ministerios %}
-                              <option value="{{ min.id }}" {% if m.ministerio == min.nome %}selected{% endif %}>
+                              <option value="{{ min.nome }}" {% if m.ministerio == min.nome %}selected{% endif %}>
                                 {{ min.nome }}
                               </option>
                             {% endfor %}
@@ -118,17 +160,28 @@
                         <div class="col-md-4">
                           <label class="form-label small">Estado Civil</label>
                           <select name="estado_civil" class="form-select form-select-sm">
+                            <option value="">--</option>
                             <option value="solteiro" {% if m.estado_civil == 'solteiro' %}selected{% endif %}>Solteiro(a)</option>
                             <option value="casado" {% if m.estado_civil == 'casado' %}selected{% endif %}>Casado(a)</option>
                             <option value="viuvo" {% if m.estado_civil == 'viuvo' %}selected{% endif %}>Viúvo(a)</option>
                             <option value="divorciado" {% if m.estado_civil == 'divorciado' %}selected{% endif %}>Divorciado(a)</option>
                           </select>
                         </div>
+                        <div class="col-md-4">
+                          <label class="form-label small">Status</label>
+                          <select name="status" class="form-select form-select-sm" required>
+                            <option value="ativo" {% if m.status == 'ativo' %}selected{% endif %}>Ativo</option>
+                            <option value="inativo" {% if m.status == 'inativo' %}selected{% endif %}>Inativo</option>
+                            <option value="afastado" {% if m.status == 'afastado' %}selected{% endif %}>Afastado</option>
+                            <option value="nao_membro" {% if m.status == 'nao_membro' %}selected{% endif %}>Não Membro</option>
+                            <option value="visitante" {% if m.status == 'visitante' %}selected{% endif %}>Visitante</option>
+                          </select>
+                        </div>
                       </div>
                     </div>
                     <div class="modal-footer">
                       <button type="button" class="btn btn-secondary btn-sm" data-bs-dismiss="modal">Cancelar</button>
-                      <button type="submit" class="btn btn-primary btn-sm">Salvar</button>
+                      <button type="submit" class="btn btn-primary btn-sm">Salvar Alterações</button>
                     </div>
                   </form>
                 </div>
@@ -136,7 +189,8 @@
             </div>
             {% else %}
             <tr>
-              <td colspan="6" class="text-center text-muted py-5">
+              <td colspan="7" class="text-center text-muted py-5">
+                <i class="bi bi-people fs-1"></i><br>
                 Nenhum membro encontrado.
               </td>
             </tr>
@@ -147,4 +201,80 @@
     </div>
   </div>
 </div>
+
+<!-- SCRIPT AJAX PARA SALVAR SEM RECARREGAR -->
+<script>
+document.addEventListener('DOMContentLoaded', function () {
+    document.querySelectorAll('.edit-form').forEach(form => {
+        form.addEventListener('submit', function (e) {
+            e.preventDefault();
+            const formData = new FormData(this);
+            const url = this.getAttribute('action');
+
+            fetch(url, {
+                method: 'POST',
+                body: formData,
+                headers: { 'X-Requested-With': 'XMLHttpRequest' }
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    const modal = bootstrap.Modal.getInstance(form.closest('.modal'));
+                    modal.hide();
+
+                    const row = document.querySelector(`tr[data-id="${data.membro.id}"]`);
+                    if (row) {
+                        row.querySelector('td:nth-child(2)').textContent = data.membro.nome;
+                        row.querySelector('td:nth-child(3)').textContent = data.membro.celular || '-';
+                        row.querySelector('td:nth-child(4)').innerHTML = `<small class="text-muted">${data.membro.email || '-'}</small>`;
+
+                        const minCell = row.querySelector('td:nth-child(5)');
+                        minCell.innerHTML = data.membro.ministerio 
+                            ? `<span class="badge bg-info text-dark">${data.membro.ministerio}</span>`
+                            : `<span class="text-muted">—</span>`;
+
+                        const statusCell = row.querySelector('td:nth-child(6)');
+                        const status = data.membro.status;
+                        const badgeClass = 
+                            status === 'ativo' ? 'bg-success' :
+                            status === 'inativo' ? 'bg-secondary' :
+                            status === 'afastado' ? 'bg-warning text-dark' :
+                            status === 'nao_membro' ? 'bg-info text-dark' :
+                            status === 'visitante' ? 'bg-light text-dark border' : 'bg-dark text-white';
+                        statusCell.innerHTML = `<span class="badge ${badgeClass}">${status.replace('_', ' ').replace(/\b\w/g, l => l.toUpperCase())}</span>`;
+
+                        const fotoImg = row.querySelector('td:first-child img');
+                        if (data.membro.foto && data.membro.foto !== 'default.jpg') {
+                            fotoImg.src = `/uploads/${data.membro.foto}?t=${Date.now()}`;
+                        } else {
+                            fotoImg.src = `/uploads/default.jpg`;
+                        }
+                    }
+
+                    showToast('Membro atualizado com sucesso!', 'success');
+                } else {
+                    showToast(data.error || 'Erro ao salvar.', 'danger');
+                }
+            })
+            .catch(() => showToast('Erro de conexão.', 'danger'));
+        });
+    });
+
+    function showToast(message, type = 'success') {
+        const toast = `
+            <div class="toast align-items-center text-white bg-${type} border-0 position-fixed" 
+                 style="top: 1rem; right: 1rem; z-index: 9999;" role="alert">
+              <div class="d-flex">
+                <div class="toast-body">${message}</div>
+                <button type="button" class="btn-close btn-close-white me-2 m-auto" data-bs-dismiss="toast"></button>
+              </div>
+            </div>`;
+        document.body.insertAdjacentHTML('beforeend', toast);
+        const toastEl = document.body.querySelector('.toast:last-child');
+        const bsToast = new bootstrap.Toast(toastEl, { delay: 3000 });
+        bsToast.show();
+        setTimeout(() => toastEl.remove(), 4000);
+    }
+});
+</script>
 {% endblock %}

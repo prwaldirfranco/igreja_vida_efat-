@@ -1,9 +1,9 @@
 {% extends "base.html" %}
-{% block title %}Novo Membro{% endblock %}
+{% block title %}{{ title }}{% endblock %}
 
 {% block content %}
 <div class="container py-5">
-    <h1 class="mb-4">Cadastro de Membro</h1>
+    <h1 class="mb-4">{{ title }}</h1>
     <form method="POST" enctype="multipart/form-data">
         {{ form.hidden_tag() }}
         <div class="row g-3">
@@ -80,19 +80,21 @@
             </div>
             <div class="col-md-4">
                 {{ form.ministerio.label(class="form-label") }}
-                {{ form.ministerio(class="form-control") }}
+                {{ form.ministerio(class="form-select") }}
             </div>
 
             <div class="col-md-4">
                 {{ form.foto.label(class="form-label") }}
                 {{ form.foto(class="form-control") }}
             </div>
+
+            <!-- CAMPO STATUS (NOVO E FUNCIONAL) -->
             <div class="col-md-4">
-                <div class="form-check mt-4">
-                    {{ form.ativo(class="form-check-input") }}
-                    {{ form.ativo.label(class="form-check-label") }}
-                </div>
+                {{ form.status.label(class="form-label") }}
+                {{ form.status(class="form-select") }}
             </div>
+
+            <!-- REMOVIDO: form.ativo (não existe mais) -->
 
             <div class="col-12 mt-4">
                 {{ form.submit(class="btn btn-success btn-lg") }}
