@@ -1,0 +1,33 @@
+{% extends "includes/_layout.html" %}
+
+{% block title %}Meu Financeiro{% endblock %}
+
+{% block content %}
+<h2>Minhas Transações - {{ mes_atual }}</h2>
+<p>Total Entradas: R$ {{ total_entradas }}</p>
+<p>Total Saídas: R$ {{ total_saidas }}</p>
+<p>Saldo: R$ {{ saldo_final }}</p>
+
+<table class="table table-striped">
+    <thead>
+        <tr>
+            <th>Data</th>
+            <th>Tipo</th>
+            <th>Categoria</th>
+            <th>Valor</th>
+            <th>Método</th>
+        </tr>
+    </thead>
+    <tbody>
+        {% for t in transacoes %}
+        <tr>
+            <td>{{ t.data.strftime('%d/%m/%Y') }}</td>
+            <td>{{ t.tipo }}</td>
+            <td>{{ t.categoria }}</td>
+            <td>{{ t.valor }}</td>
+            <td>{{ t.metodo }}</td>
+        </tr>
+        {% endfor %}
+    </tbody>
+</table>
+{% endblock %}

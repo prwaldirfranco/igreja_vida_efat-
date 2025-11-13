@@ -1,0 +1,45 @@
+{% extends 'base.html' %}
+{% block title %}Usuários{% endblock %}
+
+{% block content %}
+<div class="container py-4">
+    <h2 class="mb-4">Gerenciamento de Usuários</h2>
+
+    <table class="table table-striped table-hover">
+        <thead class="table-dark">
+            <tr>
+                <th>Nome</th>
+                <th>Email</th>
+                <th>Nível de Acesso</th>
+                <th>Membro Vinculado</th>
+                <th>Ações</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for u in usuarios %}
+            <tr>
+                <td>{{ u.nome }}</td>
+                <td>{{ u.email }}</td>
+                <td>{{ u.nivel_acesso }}</td>
+                <td>{{ u.membro.nome if u.membro else '-' }}</td>
+                <td>
+                    <a href="{{ url_for('usuarios_editar', id=u.id) }}" class="btn btn-sm btn-primary">Editar</a>
+
+                    {% if current_user.nivel_acesso == 1 %}
+                    <form method="POST" action="{{ url_for('usuarios_excluir', id=u.id) }}" style="display:inline;">
+                        <button type="submit" class="btn btn-sm btn-danger" onclick="return confirm('Excluir este usuário?')">Excluir</button>
+                    </form>
+                    {% endif %}
+                </td>
+            </tr>
+            {% else %}
+            <tr>
+                <td colspan="5" class="text-center text-muted">Nenhum usuário cadastrado.</td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+
+    <a href="{{ url_for('secretaria') }}" class="btn btn-outline-secondary mt-3">Voltar</a>
+</div>
+{% endblock %}

@@ -52,17 +52,15 @@ login_manager.login_message_category = "info"
 # ================================
 class Configuracao(db.Model):
     id = db.Column(db.Integer, primary_key=True)
-    provisao_extras = db.Column(db.Float, default=0.0)  # corrigido
+    provisao_extras = db.Column(db.Float, default=0.0)
     salario_medio = db.Column(db.Float, default=2000.0)
     data_atualizacao = db.Column(db.DateTime, default=datetime.utcnow)
 
-# Modelo para armazenar as configurações financeiras da igreja
 class ConfiguracaoFinanceira(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     meta_dizimistas = db.Column(db.Integer, nullable=False, default=0)
     valor_meta = db.Column(db.Float, nullable=False, default=0.0)
     data_configuracao = db.Column(db.DateTime, default=datetime.utcnow)
-
 
 class User(UserMixin, db.Model):
     __tablename__ = 'user'
@@ -72,6 +70,9 @@ class User(UserMixin, db.Model):
     senha = db.Column(db.String(200), nullable=False)
     nivel_acesso = db.Column(db.Integer, default=2)
     is_secretaria = db.Column(db.Boolean, default=False)
+    is_admin = db.Column(db.Boolean, default=False)
+    membro_id = db.Column(db.Integer, db.ForeignKey('membro.id', name="fk_user_membro"), nullable=True)
+    membro = db.relationship('Membro', backref='usuario', lazy=True)
 
     def __repr__(self):
         return f'<User {self.email} - Nível {self.nivel_acesso}>'
@@ -138,7 +139,7 @@ class CustoFixo(db.Model):
     nome = db.Column(db.String(100), nullable=False)
     valor = db.Column(db.Float, nullable=False)
     ativo = db.Column(db.Boolean, default=True)
-    mes_referencia = db.Column(db.String(7))  # formato: '2025-11', se quiser vincular a um mês
+    mes_referencia = db.Column(db.String(7))  # formato: '2025-11'
 
     def __repr__(self):
         return f"<CustoFixo {self.nome} - R$ {self.valor}>"
@@ -156,9 +157,7 @@ def load_user(user_id):
 def admin_required(f):
     @wraps(f)
     def decorated_function(*args, **kwargs):
-        if (not current_user.is_authenticated or 
-            current_user.nivel_acesso is None or 
-            current_user.nivel_acesso != 1):
+        if not current_user.is_authenticated or current_user.nivel_acesso != 1:
             flash("Acesso negado. Apenas Admin.", "danger")
             return redirect(url_for('secretaria'))
         return f(*args, **kwargs)
@@ -167,9 +166,7 @@ def admin_required(f):
 def secretaria_required(f):
     @wraps(f)
     def decorated_function(*args, **kwargs):
-        if (not current_user.is_authenticated or 
-            current_user.nivel_acesso is None or 
-            current_user.nivel_acesso > 2):
+        if not current_user.is_authenticated or current_user.nivel_acesso > 2:
             flash("Acesso negado. Apenas Secretária/Admin.", "danger")
             return redirect(url_for('secretaria'))
         return f(*args, **kwargs)
@@ -193,6 +190,7 @@ class LoginForm(FlaskForm):
     submit = SubmitField("Entrar")
 
 class UsuarioForm(FlaskForm):
+    membro_id = SelectField("Vincular a Membro (opcional)", coerce=int, validators=[Optional()])
     nome = StringField("Nome", validators=[DataRequired()])
     email = StringField("Email", validators=[DataRequired(), Email()])
     senha = PasswordField("Senha", validators=[DataRequired()])
@@ -205,7 +203,10 @@ class UsuarioForm(FlaskForm):
     ], coerce=int, validators=[DataRequired()])
     submit = SubmitField("Criar Usuário")
 
-# MembroForm — CORRIGIDO (SÓ UM __init__)
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.membro_id.choices = [(0, "-- Nenhum --")] + [(m.id, m.nome) for m in Membro.query.order_by(Membro.nome).all()]
+
 class MembroForm(FlaskForm):
     nome = StringField("Nome Completo", validators=[DataRequired()])
     email = StringField("E-mail", validators=[Email(), Optional()])
@@ -320,12 +321,37 @@ def login():
     form = LoginForm()
     if form.validate_on_submit():
         user = User.query.filter_by(email=form.email.data).first()
+
+        # Verifica se usuário existe e senha confere
         if user and check_password_hash(user.senha, form.senha.data):
             login_user(user)
             flash("Login realizado com sucesso!", "success")
-            return redirect(url_for("secretaria"))
+
+            # 🔹 Redirecionamentos por nível de acesso
+            if user.nivel_acesso <= 3:
+                # Admin / Secretaria completa
+                return redirect(url_for("secretaria"))
+            
+            elif user.nivel_acesso == 4:
+                # Secretaria restrita (ver lista, cadastrar, editar membros)
+                return redirect(url_for("listar_membros"))
+            
+            elif user.nivel_acesso >= 5:
+                # Membro comum (financeiro pessoal)
+                return redirect(url_for("financeiro_membro"))
+            
+            # 🔸 Caso especial: se o nível não se encaixar em nenhum
+            else:
+                flash("Nível de acesso não reconhecido. Contate o administrador.", "warning")
+                return redirect(url_for("logout"))
+
+        # Se não autenticou
         flash("Credenciais inválidas!", "danger")
+
+    # Renderiza tela de login
     return render_template('auth/login.html', form=form)
+
+
 
 @app.route('/logout')
 @login_required
@@ -340,7 +366,7 @@ def logout():
 @app.route('/secretaria')
 @login_required
 def secretaria():
-    if not current_user.is_authenticated or current_user.nivel_acesso is None or current_user.nivel_acesso > 2:
+    if not current_user.is_authenticated or current_user.nivel_acesso > 2:
         flash("Acesso restrito.", "danger")
         return redirect(url_for('index'))
 
@@ -385,7 +411,6 @@ def editar_custo_fixo(id):
     flash('Custo fixo atualizado com sucesso!', 'success')
     return redirect(url_for('custos_fixos'))
 
-
 # ================================
 # USUÁRIOS
 # ================================
@@ -405,8 +430,12 @@ def novo_usuario():
             email=form.email.data,
             senha=hashed,
             nivel_acesso=form.nivel_acesso.data,
-            is_secretaria=(form.nivel_acesso.data <= 2)
+            is_secretaria=(form.nivel_acesso.data <= 2),
+            is_admin=(form.nivel_acesso.data == 1)
         )
+        if form.membro_id.data and form.membro_id.data != 0:
+            user.membro_id = form.membro_id.data
+
         db.session.add(user)
         db.session.commit()
         flash("Usuário criado com sucesso!", "success")
@@ -477,9 +506,13 @@ def excluir_ministerio(id):
 # MEMBROS - LISTAR
 # ================================
 @app.route('/membros')
-@secretaria_required
 @login_required
 def listar_membros():
+    # Permite níveis 1-4 (admin, secretaria completa e secretaria restrita)
+    if current_user.nivel_acesso > 4:
+        flash("Acesso negado.", "danger")
+        return redirect(url_for('index'))
+
     query = request.args.get('q', '').strip()
     ministerios = Ministerio.query.order_by(Ministerio.nome).all()
 
@@ -496,6 +529,7 @@ def listar_membros():
         membros = Membro.query.order_by(Membro.nome).all()
 
     return render_template('secretaria/membros_list.html', membros=membros, ministerios=ministerios)
+
 
 # ================================
 # MEMBROS - EDITAR (AJAX)
@@ -542,12 +576,15 @@ def editar_membro(id):
     return "Método não permitido", 405
 
 # ================================
-# MEMBROS - NOVO (CORRIGIDO)
+# MEMBROS - NOVO
 # ================================
 @app.route('/membro/novo', methods=['GET', 'POST'])
-@secretaria_required
 @login_required
 def novo_membro():
+    # Permite níveis 1-4
+    if current_user.nivel_acesso > 4:
+        flash("Acesso negado.", "danger")
+        return redirect(url_for('index'))
     form = MembroForm()
 
     if form.validate_on_submit():
@@ -633,8 +670,8 @@ def importar_membros():
                         endereco=row.get('endereco', '').strip(),
                         cep=row.get('cep', '').strip(),
                         bairro=row.get('bairro', '').strip(),
-                        cidade=row.get('cidade', 'Macae').strip(),
-                        estado=row.get('estado', 'RJ').strip(),
+                        cidade=row.get('cidade', '').strip() or 'São Paulo',
+                        estado=row.get('estado', '').strip() or 'SP',
                         conjuge=row.get('conjuge', '').strip(),
                         ativo=True,
                         status='ativo'
@@ -642,7 +679,7 @@ def importar_membros():
                     db.session.add(membro)
                     count += 1
                 except Exception as e:
-                    print(f"Erro na linha: {row} → {e}")
+                    flash(f"Erro na linha: {row} → {e}", "danger")
             db.session.commit()
             flash(f"{count} membros importados com sucesso!", "success")
             return redirect(url_for('listar_membros'))
@@ -652,36 +689,42 @@ def importar_membros():
 # ================================
 # FINANCEIRO
 # ================================
-# =========================================
-# Função para gerar dados do gráfico financeiro
-# =========================================
 def gerar_dados_grafico():
-    """
-    Gera dados básicos para o gráfico financeiro.
-    Você pode depois trocar por consultas reais ao banco.
-    """
-    meses_grafico = ["Jan", "Fev", "Mar", "Abr", "Mai", "Jun", "Jul", "Ago", "Set", "Out", "Nov", "Dez"]
-    saldos_grafico = [0] * 12  # lista de 12 valores zerados (um por mês)
+    meses_grafico = []
+    saldos_grafico = []
+    hoje = datetime.now()
+    for i in range(11, -1, -1):
+        mes = (hoje - timedelta(days=30*i)).strftime('%b')
+        inicio_mes = datetime(hoje.year, hoje.month - i, 1) if hoje.month - i > 0 else datetime(hoje.year - 1, 12 + (hoje.month - i), 1)
+        fim_mes = inicio_mes + timedelta(days=31) - timedelta(days=1)
+        entradas = db.session.query(func.sum(Transacao.valor)).filter(
+            Transacao.data.between(inicio_mes, fim_mes),
+            Transacao.tipo.in_(['dizimo', 'oferta', 'doacao'])
+        ).scalar() or 0
+        saidas = db.session.query(func.sum(Transacao.valor)).filter(
+            Transacao.data.between(inicio_mes, fim_mes),
+            Transacao.tipo == 'despesa'
+        ).scalar() or 0
+        saldos_grafico.append(entradas - saidas)
+        meses_grafico.append(mes)
     return meses_grafico, saldos_grafico
 
 @app.route('/financeiro', methods=['GET', 'POST'])
-@login_required
+@login_required  # apenas login_required para permitir visualização restrita
 def financeiro():
     form = TransacaoForm()
 
-    # Preenche as opções do campo membro_id dinamicamente
     membros = Membro.query.order_by(Membro.nome).all()
     form.membro_id.choices = [(0, '-- Nenhum --')] + [(m.id, m.nome) for m in membros]
 
-    # Filtro de mês
     mes = request.args.get('mes', datetime.now().strftime('%Y-%m'))
     ano, mes_num = map(int, mes.split('-'))
     inicio_mes = datetime(ano, mes_num, 1)
     proximo_mes = inicio_mes + timedelta(days=32)
     fim_mes = datetime(proximo_mes.year, proximo_mes.month, 1) - timedelta(days=1)
 
-    # Inserção de nova transação
-    if form.validate_on_submit():
+    # Inserção só se permitido (nível <= 3)
+    if form.validate_on_submit() and current_user.nivel_acesso <= 3:
         nova = Transacao(
             data=form.data_transacao.data,
             tipo=form.tipo.data,
@@ -696,40 +739,45 @@ def financeiro():
         flash('Transação registrada com sucesso!', 'success')
         return redirect(url_for('financeiro', mes=mes))
 
-    # Carregar transações do mês
-    transacoes = Transacao.query.filter(
-        Transacao.data >= inicio_mes,
-        Transacao.data <= fim_mes
-    ).order_by(Transacao.data.desc()).all()
+    # --- VISUALIZAÇÃO RESTRITA PARA MEMBROS (nível > 3) ---
+    is_restrito = current_user.nivel_acesso > 3
+    if is_restrito:
+        membro = current_user.membro
+        if not membro:
+            flash("Você ainda não está vinculado a um membro no sistema.", "warning")
+            return redirect(url_for('index'))
 
-    # Calcular totais
+        transacoes = Transacao.query.filter_by(membro_id=membro.id).filter(
+            Transacao.data >= inicio_mes,
+            Transacao.data <= fim_mes
+        ).order_by(Transacao.data.desc()).all()
+        form = None  # Esconde o formulário para membros
+    else:
+        transacoes = Transacao.query.filter(
+            Transacao.data >= inicio_mes,
+            Transacao.data <= fim_mes
+        ).order_by(Transacao.data.desc()).all()
+
+    # --- CÁLCULOS ---
     total_entradas = sum(t.valor for t in transacoes if t.tipo in ['dizimo', 'oferta', 'doacao'])
     total_saidas = sum(t.valor for t in transacoes if t.tipo == 'despesa')
-    total_fixos = sum(t.valor for t in transacoes if t.is_fixo)
+    total_fixos = sum(t.valor for t in transacoes if t.is_fixo) + sum(c.valor for c in CustoFixo.query.filter_by(ativo=True).all())
 
-        # Configurações financeiras
-    # OBS: usar o modelo Configuracao (que contém provisao_extras e salario_medio)
     config = Configuracao.query.first()
     if not config:
-        config = Configuracao()  # usa os defaults do modelo (provisao_extras=0.0, salario_medio=2000.0)
+        config = Configuracao()
         db.session.add(config)
         db.session.commit()
 
     saldo_final = total_entradas - total_saidas
-    # garante que provisao_extras exista (float)
-    provisao = getattr(config, 'provisao_extras', 0.0) or 0.0
+    provisao = config.provisao_extras or 0.0
     saldo_real = saldo_final - provisao - total_fixos
 
+    media_dizimo = 151
+    dizimistas_necessarios = int(round(total_fixos / media_dizimo, 0)) if media_dizimo > 0 else 0
 
-    # Cálculo de dizimistas necessários (baseado nos fixos)
-    media_dizimo = 151  # média por dizimista (ajuste se quiser)
-    dizimistas_necessarios = int(round(total_fixos / media_dizimo, 0))
-
-    # Geração do gráfico (últimos 6 meses)
     meses_grafico, saldos_grafico = gerar_dados_grafico()
-
-    # 🟩 NOVOS CAMPOS
-    mes_atual = datetime.now().strftime('%B/%Y').capitalize()  # exemplo: Novembro/2025
+    mes_atual = datetime.now().strftime('%B/%Y').capitalize()
     saldo_status = "positivo" if saldo_final >= 0 else "negativo"
 
     return render_template(
@@ -740,14 +788,57 @@ def financeiro():
         total_saidas=total_saidas,
         total_fixos=total_fixos,
         saldo_real=saldo_real,
-        provisao_extras=config.provisao_extras,
+        provisao_extras=provisao,
         saldo_final=saldo_final,
         dizimistas_necessarios=dizimistas_necessarios,
         mes=mes,
         meses_grafico=meses_grafico,
         saldos_grafico=saldos_grafico,
         mes_atual=mes_atual,
-        saldo_status=saldo_status
+        saldo_status=saldo_status,
+        is_membro=is_restrito
+    )
+
+
+@app.route('/financeiro_membro')
+@login_required
+def financeiro_membro():
+    # Só usuários vinculados a um membro podem acessar
+    membro = current_user.membro
+    if not membro:
+        flash("Você ainda não está vinculado a um membro no sistema.", "warning")
+        return redirect(url_for('index'))
+
+    # Filtrar mês atual ou selecionado
+    mes = request.args.get('mes', datetime.now().strftime('%Y-%m'))
+    ano, mes_num = map(int, mes.split('-'))
+    inicio_mes = datetime(ano, mes_num, 1)
+    proximo_mes = inicio_mes + timedelta(days=32)
+    fim_mes = datetime(proximo_mes.year, proximo_mes.month, 1) - timedelta(days=1)
+
+    # Buscar transações do membro
+    transacoes = Transacao.query.filter_by(membro_id=membro.id).filter(
+        Transacao.data >= inicio_mes,
+        Transacao.data <= fim_mes
+    ).order_by(Transacao.data.desc()).all()
+
+    total_entradas = sum(t.valor for t in transacoes if t.tipo in ['dizimo', 'oferta', 'doacao'])
+    total_saidas = sum(t.valor for t in transacoes if t.tipo == 'despesa')
+
+    saldo_final = total_entradas - total_saidas
+
+    meses_grafico, saldos_grafico = gerar_dados_grafico()  # reutiliza função do financeiro
+
+    return render_template(
+        'secretaria/financeiro_membro.html',
+        transacoes=transacoes,
+        total_entradas=total_entradas,
+        total_saidas=total_saidas,
+        saldo_final=saldo_final,
+        meses_grafico=meses_grafico,
+        saldos_grafico=saldos_grafico,
+        mes=mes,
+        mes_atual=datetime.now().strftime('%B/%Y').capitalize()
     )
 
 
@@ -821,7 +912,7 @@ def exportar_pdf():
                            total_geral=total_geral,
                            mes=mes)
 
-    caminho_wk = r'C:\Program Files\wkhtmltopdf\bin\wkhtmltopdf.exe'
+    caminho_wk = os.getenv('WKHTMLTOPDF_PATH', r'C:\Program Files\wkhtmltopdf\bin\wkhtmltopdf.exe')
     config = pdfkit.configuration(wkhtmltopdf=caminho_wk)
     pdf = pdfkit.from_string(html, False, configuration=config)
 
@@ -898,6 +989,14 @@ def uploaded_file(filename):
     return send_file(os.path.join(app.config['UPLOAD_FOLDER'], filename))
 
 # ================================
+# ROTA STUB PARA /pdv (se precisar)
+# ================================
+@app.route('/pdv')
+@login_required
+def pdv():
+    return render_template('secretaria/pdv.html')  # Crie o template se quiser
+
+# ================================
 # INICIALIZAÇÃO
 # ================================
 def create_initial_data():
@@ -914,7 +1013,8 @@ def create_initial_data():
                 email="combave@gmail.com",
                 senha=hashed,
                 nivel_acesso=1,
-                is_secretaria=True
+                is_secretaria=True,
+                is_admin=True
             )
             db.session.add(admin)
             db.session.commit()
@@ -931,6 +1031,61 @@ def create_initial_data():
                 db.session.add(m)
             db.session.commit()
             print("3 ministérios criados!")
+
+# ================================
+# GERENCIAMENTO DE USUÁRIOS (versão corrigida)
+# ================================
+@app.route('/secretaria/usuarios/listar')
+@login_required
+def usuarios_listar():
+    if current_user.nivel_acesso > 3:
+        flash("Acesso negado.", "danger")
+        return redirect(url_for('index'))
+
+    usuarios = User.query.order_by(User.nome.asc()).all()
+    return render_template('secretaria/usuarios_list.html', usuarios=usuarios)
+
+
+@app.route('/secretaria/usuarios/editar/<int:id>', methods=['GET', 'POST'])
+@login_required
+def usuarios_editar(id):
+    if current_user.nivel_acesso > 3:
+        flash("Acesso negado.", "danger")
+        return redirect(url_for('index'))
+
+    usuario = User.query.get_or_404(id)
+    membros = Membro.query.order_by(Membro.nome.asc()).all()
+
+    if request.method == 'POST':
+        usuario.nome = request.form.get('nome')
+        usuario.email = request.form.get('email')
+        usuario.nivel_acesso = int(request.form.get('nivel_acesso', usuario.nivel_acesso))
+        usuario.membro_id = int(request.form.get('membro_id')) if request.form.get('membro_id') else None
+
+        nova_senha = request.form.get('senha')
+        if nova_senha:
+            usuario.senha = generate_password_hash(nova_senha)
+
+        db.session.commit()
+        flash("Usuário atualizado com sucesso!", "success")
+        return redirect(url_for('usuarios_listar'))
+
+    return render_template('secretaria/usuarios_edit.html', usuario=usuario, membros=membros)
+
+
+@app.route('/secretaria/usuarios/excluir/<int:id>', methods=['POST'])
+@login_required
+def usuarios_excluir(id):
+    if current_user.nivel_acesso != 1:
+        flash("Apenas o Administrador pode excluir usuários.", "danger")
+        return redirect(url_for('usuarios_listar'))
+
+    usuario = User.query.get_or_404(id)
+    db.session.delete(usuario)
+    db.session.commit()
+    flash("Usuário excluído com sucesso!", "info")
+    return redirect(url_for('usuarios_listar'))
+
 
 if __name__ == '__main__':
     with app.app_context():
