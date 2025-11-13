@@ -29,7 +29,9 @@
                     <li class="nav-item"><a class="nav-link" href="{{ url_for('contato') }}">Contato</a></li>
                     {% if current_user.is_authenticated %}
                         <li class="nav-item"><a class="nav-link" href="{{ url_for('secretaria') }}">Secretaria</a></li>
+                        <li class="nav-item"><a class="nav-link" href="{{ url_for('financeiro_membro') }}">Financeiro</a></li>
                         <li class="nav-item"><a class="nav-link text-danger" href="{{ url_for('logout') }}">Sair</a></li>
+                      
                     {% else %}
                         <li class="nav-item"><a class="nav-link" href="{{ url_for('login') }}">Login</a></li>
                     {% endif %}

@@ -1,154 +1,183 @@
 {% extends "includes/_layout.html" %}
 {% block title %}Financeiro{% endblock %}
-
 {% block content %}
 <div class="container-fluid py-4">
-
-  <!-- Cabeçalho + Filtro de Mês + Botão Configurar -->
-  <div class="d-flex justify-content-between align-items-center mb-4">
+  <!-- Cabeçalho + Filtro + Config -->
+   
+  <div class="d-flex flex-column flex-md-row justify-content-between align-items-start align-items-md-center mb-4 gap-3">
     <div>
-      <h2 class="h4 mb-0">
-        <i class="bi bi-cash-stack"></i> Financeiro
-      </h2>
+      <h2 class="h4 mb-1">Financeiro</h2>
       <small class="text-muted">
-        📅 Mês Atual:
-        <strong>{{ mes_atual }}</strong> —
-        {% if saldo_final < 0 %}
-          <span class="text-danger fw-bold">Situação: NEGATIVA (Déficit)</span>
+        Mês: <strong>{{ mes_atual }}</strong> — 
+        {% if saldo_real >= 0 %}
+          <span class="text-success fw-bold">Superávit</span>
         {% else %}
-          <span class="text-success fw-bold">Situação: POSITIVA (Superávit)</span>
+          <span class="text-danger fw-bold">Déficit de R$ {{ "%.2f"|format(-saldo_real) }}</span>
         {% endif %}
       </small>
     </div>
-
-    <div class="d-flex gap-2">
+    <div class="d-flex flex-wrap gap-2">
+      {% if current_user.nivel_acesso <= 3 %}
       <a href="{{ url_for('configurar_financeiro') }}" class="btn btn-outline-secondary btn-sm">
         <i class="bi bi-gear"></i> Configurar
       </a>
+      {% endif %}
       <form method="GET" class="d-flex gap-2">
         <input type="month" name="mes" value="{{ mes }}" class="form-control form-control-sm" style="width: 160px;">
-        <button type="submit" class="btn btn-outline-primary btn-sm">
-          <i class="bi bi-funnel"></i> Filtrar
-        </button>
+        <button type="submit" class="btn btn-outline-primary btn-sm">Filtrar</button>
       </form>
     </div>
   </div>
 
   <!-- Cards de Resumo -->
   <div class="row g-3 mb-4">
+    <!-- Entradas -->
     <div class="col-6 col-md-3">
       <div class="card border-0 shadow-sm h-100 text-white" style="background: linear-gradient(135deg, #28a745, #20c997);">
-        <div class="card-body">
-          <h6 class="mb-1 opacity-75">Entradas</h6>
-          <h3 class="mb-0">R$ {{ "%.2f"|format(total_entradas) }}</h3>
+        <div class="card-body p-3">
+          <h6 class="mb-1 opacity-75 small">Entradas</h6>
+          <h3 class="mb-0 fw-bold">R$ {{ "%.2f"|format(total_entradas) }}</h3>
         </div>
       </div>
     </div>
 
+    <!-- Saídas -->
     <div class="col-6 col-md-3">
       <div class="card border-0 shadow-sm h-100 text-white" style="background: linear-gradient(135deg, #dc3545, #fd7e14);">
-        <div class="card-body">
-          <h6 class="mb-1 opacity-75">Saídas</h6>
-          <h3 class="mb-0">R$ {{ "%.2f"|format(total_saidas) }}</h3>
+        <div class="card-body p-3">
+          <h6 class="mb-1 opacity-75 small">Saídas</h6>
+          <h3 class="mb-0 fw-bold">R$ {{ "%.2f"|format(total_saidas) }}</h3>
         </div>
       </div>
     </div>
 
+    <!-- Fixos -->
     <div class="col-6 col-md-3">
       <div class="card border-0 shadow-sm h-100 text-white" style="background: linear-gradient(135deg, #ffc107, #fd7e14);">
-        <div class="card-body">
-          <h6 class="mb-1 opacity-75">Fixos</h6>
-          <h3 class="mb-0">R$ {{ "%.2f"|format(total_fixos) }}</h3>
+        <div class="card-body p-3">
+          <h6 class="mb-1 opacity-75 small">Custos Fixos</h6>
+          <h3 class="mb-0 fw-bold">R$ {{ "%.2f"|format(total_fixos) }}</h3>
         </div>
       </div>
     </div>
 
+    <!-- Saldo Final -->
     <div class="col-6 col-md-3">
-      <div class="card border-0 shadow-sm h-100 text-white {% if saldo_final < 0 %}bg-danger{% else %}bg-primary{% endif %}">
-        <div class="card-body">
-          <h6 class="mb-1 opacity-75">Saldo Final</h6>
-          <h3 class="mb-0">R$ {{ "%.2f"|format(saldo_final) }}</h3>
+      <div class="card border-0 shadow-sm h-100 text-white {% if saldo_final >= 0 %}bg-primary{% else %}bg-danger{% endif %}">
+        <div class="card-body p-3">
+          <h6 class="mb-1 opacity-75 small">Saldo Final</h6>
+          <h3 class="mb-0 fw-bold">R$ {{ "%.2f"|format(saldo_final) }}</h3>
+          <small class="opacity-75">Entradas - (Saídas + Fixos)</small>
         </div>
       </div>
     </div>
 
+    <!-- Saldo Real -->
     <div class="col-6 col-md-3">
-      <div class="card border-0 shadow-sm h-100 text-white" style="background: linear-gradient(135deg, #17a2b8, #0dcaf0);">
-        <div class="card-body">
-          <h6 class="mb-1 opacity-75">Saldo Real</h6>
-          <h3 class="mb-0">R$ {{ "%.2f"|format(saldo_real) }}</h3>
+      <div class="card border-0 shadow-sm h-100 text-white {% if saldo_real >= 0 %}bg-info{% else %}bg-danger{% endif %}">
+        <div class="card-body p-3">
+          <h6 class="mb-1 opacity-75 small">Saldo Real</h6>
+          <h3 class="mb-0 fw-bold">R$ {{ "%.2f"|format(saldo_real) }}</h3>
+          <small class="opacity-75">- Provisão Extras</small>
         </div>
       </div>
-    </div>
+    </div>>
 
+    <!-- Provisão Extras -->
     <div class="col-6 col-md-3">
       <div class="card border-0 shadow-sm h-100 text-white" style="background: linear-gradient(135deg, #6f42c1, #9c27b0);">
-        <div class="card-body">
-          <h6 class="mb-1 opacity-75">Provisão Extras</h6>
-          <h3 class="mb-0">R$ {{ "%.2f"|format(provisao_extras) }}</h3>
+        <div class="card-body p-3">
+          <h6 class="mb-1 opacity-75 small">Provisão Extras</h6>
+          <h3 class="mb-0 fw-bold">R$ {{ "%.2f"|format(provisao_extras) }}</h3>
         </div>
       </div>
     </div>
 
-    <div class="col-6 col-md-3">
-      <div class="card border-0 shadow-sm h-100 text-white" style="background: linear-gradient(135deg, #fd7e14, #f39c12);">
-        <div class="card-body">
-          <h6 class="mb-1 opacity-75">Dizimistas Necessários</h6>
-          <h3 class="mb-0">{{ dizimistas_necessarios }}</h3>
-        </div>
-      </div>
+    <!-- Dizimistas Necessários -->
+<div class="col-6 col-md-3">
+  <div class="card border-0 shadow-sm h-100 text-white" style="background: linear-gradient(135deg, #fd7e14, #f39c12);">
+    <div class="card-body p-3">
+      <h6 class="mb-1 opacity-75 small">Dizimistas Necessários</h6>
+      <h3 class="mb-0 fw-bold">{{ dizimistas_necessarios }}</h3>
+      <small class="opacity-75">
+        para cobrir R$ {{ "%.2f"|format(despesa_total) }}<br>
+        (10% de R$ {{ "%.2f"|format(salario_medio) }} = R$ {{ "%.2f"|format(dizimo_medio) }} cada)
+      </small>
     </div>
   </div>
+</div>
 
   <!-- Formulário + Gráfico -->
   <div class="row g-4">
+    <!-- Formulário (apenas tesouraria) -->
     {% if form %}
-    <!-- Formulário para tesouraria -->
     <div class="col-lg-4">
       <div class="card border-0 shadow-sm h-100">
         <div class="card-header bg-white">
-          <h6 class="mb-0"><i class="bi bi-plus-circle"></i> Registrar Transação</h6>
+          <h6 class="mb-0">Registrar Transação</h6>
         </div>
         <div class="card-body">
           <form method="POST">
             {{ form.hidden_tag() }}
-            <div class="mb-2">{{ form.data_transacao.label(class="form-label small") }}{{ form.data_transacao(class="form-control form-control-sm") }}</div>
-            <div class="mb-2">{{ form.tipo.label(class="form-label small") }}{{ form.tipo(class="form-select form-select-sm") }}</div>
-            <div class="mb-2">{{ form.categoria.label(class="form-label small") }}{{ form.categoria(class="form-control form-control-sm") }}</div>
-            <div class="mb-2">{{ form.valor.label(class="form-label small") }}{{ form.valor(class="form-control form-control-sm") }}</div>
-            <div class="mb-2">{{ form.metodo.label(class="form-label small") }}{{ form.metodo(class="form-select form-select-sm") }}</div>
-            <div class="mb-2">{{ form.membro_id.label(class="form-label small") }}{{ form.membro_id(class="form-select form-select-sm") }}</div>
-            <div class="mb-3">{{ form.is_fixo.label(class="form-label small") }}{{ form.is_fixo(class="form-select form-select-sm") }}</div>
-            <button type="submit" class="btn btn-success w-100">
-              <i class="bi bi-check2"></i> Registrar
+            <div class="mb-2">
+              {{ form.data_transacao.label(class="form-label small") }}
+              {{ form.data_transacao(class="form-control form-control-sm") }}
+            </div>
+            <div class="mb-2">
+              {{ form.tipo.label(class="form-label small") }}
+              {{ form.tipo(class="form-select form-select-sm") }}
+            </div>
+            <div class="mb-2">
+              {{ form.categoria.label(class="form-label small") }}
+              {{ form.categoria(class="form-control form-control-sm") }}
+            </div>
+            <div class="mb-2">
+              {{ form.valor.label(class="form-label small") }}
+              {{ form.valor(class="form-control form-control-sm") }}
+            </div>
+            <div class="mb-2">
+              {{ form.metodo.label(class="form-label small") }}
+              {{ form.metodo(class="form-select form-select-sm") }}
+            </div>
+            <div class="mb-2">
+              {{ form.membro_id.label(class="form-label small") }}
+              {{ form.membro_id(class="form-select form-select-sm") }}
+            </div>
+            <div class="mb-3">
+              {{ form.is_fixo.label(class="form-label small") }}
+              {{ form.is_fixo(class="form-select form-select-sm") }}
+            </div>
+            <button type="submit" class="btn btn-success w-100 btn-sm">
+              Registrar
             </button>
           </form>
         </div>
       </div>
     </div>
     {% else %}
-    <!-- Visualização para membros -->
+    <!-- Mensagem para membros -->
     <div class="col-lg-4">
       <div class="card border-0 shadow-sm h-100 text-center p-4">
-        <div class="card-body">
-          <i class="bi bi-lock fs-1 text-muted"></i>
-          <p class="mt-3 text-muted small">
-            Apenas a tesouraria pode registrar novas transações.<br>
-            Aqui você pode visualizar suas contribuições e o saldo do mês.
+        <div class="card-body d-flex flex-column justify-content-center">
+          <i class="bi bi-eye fs-1 text-muted mb-3"></i>
+          <p class="text-muted small">
+            Você está visualizando como <strong>membro</strong>.<br>
+            Apenas a <strong>tesouraria</strong> pode registrar transações.
           </p>
         </div>
       </div>
     </div>
     {% endif %}
 
-    <!-- Gráfico -->
+    <!-- Gráfico de 12 meses -->
     <div class="col-lg-8">
       <div class="card border-0 shadow-sm h-100">
         <div class="card-header bg-white d-flex justify-content-between align-items-center">
-          <h6 class="mb-0"><i class="bi bi-graph-up"></i> Saldo Mensal (6 meses)</h6>
+          <h6 class="mb-0">Evolução do Saldo Real (12 meses)</h6>
+          <small class="text-muted">Últimos 12 meses</small>
         </div>
         <div class="card-body">
-          <canvas id="graficoSaldo" height="280"></canvas>
+          <canvas id="graficoSaldo" height="300"></canvas>
         </div>
       </div>
     </div>
@@ -156,8 +185,9 @@
 
   <!-- Tabela de Transações -->
   <div class="card border-0 shadow-sm mt-4">
-    <div class="card-header bg-white">
-      <h6 class="mb-0"><i class="bi bi-table"></i> Transações do Mês</h6>
+    <div class="card-header bg-white d-flex justify-content-between align-items-center">
+      <h6 class="mb-0">Transações do Mês</h6>
+      <small class="text-muted">{{ transacoes|length }} registro{{ '' if transacoes|length == 1 else 's' }}</small>
     </div>
     <div class="card-body p-0">
       <div class="table-responsive">
@@ -170,22 +200,69 @@
               <th>Método</th>
               <th class="text-end">Valor</th>
               <th>Fixo?</th>
+              {% if current_user.nivel_acesso <= 3 %}
+              <th class="text-center">Ações</th>
+              {% endif %}
             </tr>
           </thead>
           <tbody>
             {% if transacoes %}
               {% for t in transacoes %}
-              <tr class="{% if t.tipo == 'despesa' %}table-danger{% else %}table-success{% endif %}">
+              <tr class="{% if t.tipo == 'despesa' %}table-danger{% else %}table-success{% endif %}" id="transacao-{{ t.id }}">
                 <td>{{ t.data.strftime('%d/%m/%Y') }}</td>
-                <td>{{ t.tipo|title }}</td>
+                <td><span class="badge bg-{{ 'danger' if t.tipo == 'despesa' else 'success' }}">{{ t.tipo|title }}</span></td>
                 <td>{{ t.categoria }}</td>
                 <td>{{ t.metodo|title }}</td>
-                <td class="text-end">R$ {{ "%.2f"|format(t.valor) }}</td>
-                <td>{% if t.is_fixo %}<span class="badge bg-primary">Sim</span>{% else %}-{% endif %}</td>
+                <td class="text-end fw-bold">R$ {{ "%.2f"|format(t.valor) }}</td>
+                <td>
+                  {% if t.is_fixo %}
+                    <span class="badge bg-primary">Sim</span>
+                  {% else %}
+                    <span class="text-muted">—</span>
+                  {% endif %}
+                </td>
+                {% if current_user.nivel_acesso <= 3 %}
+                <td class="text-center">
+                  <button type="button" class="btn btn-outline-primary btn-sm" onclick="editarTransacao({{ t.id }})" title="Editar">
+                    Editar
+                  </button>
+                  <button type="button" class="btn btn-outline-danger btn-sm" data-bs-toggle="modal" data-bs-target="#deleteModal{{ t.id }}" title="Excluir">
+                    Excluir
+                  </button>
+                </td>
+                {% endif %}
               </tr>
+
+              <!-- Modal Excluir Transação -->
+              <div class="modal fade" id="deleteModal{{ t.id }}" tabindex="-1">
+                <div class="modal-dialog modal-sm">
+                  <div class="modal-content">
+                    <div class="modal-header">
+                      <h6 class="modal-title">Excluir Transação?</h6>
+                      <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                    </div>
+                    <div class="modal-body text-center">
+                      <p><strong>{{ t.categoria }}</strong></p>
+                      <p class="text-muted small">
+                        {{ t.tipo|title }} • R$ {{ "%.2f"|format(t.valor) }} • {{ t.data.strftime('%d/%m/%Y') }}
+                      </div>
+                      <div class="modal-footer justify-content-center">
+                        <form method="POST" action="{{ url_for('excluir_transacao', id=t.id, mes=mes) }}">
+                          <button type="submit" class="btn btn-danger btn-sm">Excluir</button>
+                        </form>
+                        <button type="button" class="btn btn-secondary btn-sm" data-bs-dismiss="modal">Cancelar</button>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </div>
               {% endfor %}
             {% else %}
-              <tr><td colspan="6" class="text-center text-muted py-3">Nenhuma transação encontrada.</td></tr>
+              <tr>
+                <td colspan="{% if current_user.nivel_acesso <= 3 %}7{% else %}6{% endif %}" class="text-center text-muted py-4">
+                  Nenhuma transação neste mês.
+                </td>
+              </tr>
             {% endif %}
           </tbody>
         </table>
@@ -193,8 +270,73 @@
     </div>
   </div>
 
+  <!-- Tabela de Custos Fixos -->
+  {% if current_user.nivel_acesso <= 3 %}
+  <div class="card border-0 shadow-sm mt-4">
+    <div class="card-header bg-white d-flex justify-content-between align-items-center">
+      <h6 class="mb-0">Custos Fixos Ativos</h6>
+      <small class="text-muted">Total: R$ {{ "%.2f"|format(total_fixos) }}</small>
+    </div>
+    <div class="card-body p-0">
+      <div class="table-responsive">
+        <table class="table table-sm table-hover mb-0 align-middle">
+          <thead class="table-light">
+            <tr>
+              <th>Nome</th>
+              <th class="text-end">Valor</th>
+              <th class="text-center">Ação</th>
+            </tr>
+          </thead>
+          <tbody>
+            {% if custos_fixos %}
+              {% for c in custos_fixos %}
+              <tr>
+                <td>{{ c.nome }}</td>
+                <td class="text-end fw-bold">R$ {{ "%.2f"|format(c.valor) }}</td>
+                <td class="text-center">
+                  <button type="button" class="btn btn-outline-danger btn-sm" data-bs-toggle="modal" data-bs-target="#deleteCusto{{ c.id }}">
+                    Excluir
+                  </button>
+                </td>
+              </tr>
+
+              <!-- Modal Excluir Custo -->
+              <div class="modal fade" id="deleteCusto{{ c.id }}" tabindex="-1">
+                <div class="modal-dialog modal-sm">
+                  <div class="modal-content">
+                    <div class="modal-header">
+                      <h6 class="modal-title">Excluir Custo Fixo?</h6>
+                      <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                    </div>
+                    <div class="modal-body text-center">
+                      <p><strong>{{ c.nome }}</strong></p>
+                      <p class="text-muted small">R$ {{ "%.2f"|format(c.valor) }}</p>
+                    </div>
+                    <div class="modal-footer justify-content-center">
+                      <form method="POST" action="{{ url_for('excluir_custo_fixo', id=c.id) }}">
+                        <button type="submit" class="btn btn-danger btn-sm">Excluir</button>
+                      </form>
+                      <button type="button" class="btn btn-secondary btn-sm" data-bs-dismiss="modal">Cancelar</button>
+                    </div>
+                  </div>
+                </div>
+              </div>
+              {% endfor %}
+            {% else %}
+              <tr>
+                <td colspan="3" class="text-center text-muted py-4">Nenhum custo fixo ativo.</td>
+              </tr>
+            {% endif %}
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+  {% endif %}
+
 </div>
 
+<!-- Chart.js + Edição Inline -->
 <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 <script>
   document.addEventListener('DOMContentLoaded', function () {
@@ -204,15 +346,82 @@
       data: {
         labels: {{ meses_grafico|tojson }},
         datasets: [{
-          label: 'Saldo Real',
+          label: 'Saldo Real (R$)',
           data: {{ saldos_grafico|tojson }},
           borderColor: '#0d6efd',
           backgroundColor: 'rgba(13, 110, 253, 0.1)',
           fill: true,
-          tension: 0.4
+          tension: 0.4,
+          pointBackgroundColor: '#0d6efd',
+          pointRadius: 4
         }]
+      },
+      options: {
+        responsive: true,
+        plugins: {
+          legend: { position: 'top' },
+          tooltip: {
+            callbacks: {
+              label: function(context) {
+                return 'R$ ' + context.parsed.y.toFixed(2);
+              }
+            }
+          }
+        },
+        scales: {
+          y: { beginAtZero: false }
+        }
       }
     });
   });
+
+  // === EDIÇÃO INLINE COM PROMPT ===
+  function editarTransacao(id) {
+    const row = document.getElementById('transacao-' + id);
+    const cells = row.cells;
+
+    const dados = {
+      data: cells[0].textContent.trim(),
+      tipo: cells[1].querySelector('.badge').textContent.trim().toLowerCase(),
+      categoria: cells[2].textContent.trim(),
+      metodo: cells[3].textContent.trim().toLowerCase(),
+      valor: parseFloat(cells[4].textContent.replace('R$', '').replace(/\./g, '').replace(',', '.').trim()),
+      is_fixo: cells[5].querySelector('.badge') ? true : false
+    };
+
+    const novaData = prompt('Data (DD/MM/AAAA):', dados.data);
+    if (!novaData) return;
+    const novoTipo = prompt('Tipo (dizimo/oferta/doacao/despesa):', dados.tipo);
+    if (!novoTipo) return;
+    const novaCategoria = prompt('Categoria:', dados.categoria);
+    if (!novaCategoria) return;
+    const novoMetodo = prompt('Método (dinheiro/pix/cartao):', dados.metodo);
+    if (!novoMetodo) return;
+    const novoValor = prompt('Valor:', dados.valor);
+    if (!novoValor) return;
+    const is_fixo = confirm('É custo fixo?') ? 'true' : 'false';
+
+    fetch(`/financeiro/editar/${id}`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        data: novaData,
+        tipo: novoTipo,
+        categoria: novaCategoria,
+        metodo: novoMetodo,
+        valor: parseFloat(novoValor),
+        is_fixo: is_fixo
+      })
+    })
+    .then(r => r.json())
+    .then(res => {
+      if (res.success) {
+        location.reload();
+      } else {
+        alert('Erro: ' + (res.error || 'Tente novamente.'));
+      }
+    })
+    .catch(() => alert('Erro de conexão.'));
+  }
 </script>
 {% endblock %}

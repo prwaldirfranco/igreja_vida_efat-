@@ -1,0 +1,71 @@
+{% extends 'base.html' %}
+
+{% block content %}
+<div class="container mt-5">
+    <h2 class="mb-4">Enviar Mensagem para Membros</h2>
+    <form method="POST" class="needs-validation" novalidate>
+        <div class="mb-3">
+            <label for="tipo" class="form-label">Tipo de Mensagem:</label>
+            <select name="tipo" id="tipo" class="form-select">
+                <option value="email">E-mail</option>
+                <option value="sms">SMS</option>
+            </select>
+        </div>
+
+        <div class="mb-3">
+            <label for="destinatario_tipo" class="form-label">Destinatário:</label>
+            <select name="destinatario_tipo" id="destinatario_tipo" class="form-select" onchange="toggleFields(this.value)">
+                <option value="todos">Todos os Membros</option>
+                <option value="ministerio">Por Ministério(s)</option>
+                <option value="individual">Individual(is)</option>
+            </select>
+        </div>
+
+        <div class="mb-3" id="ministerio_field" style="display:none;">
+            <label for="ministerio_nomes" class="form-label">Selecione Ministério(s) (pressione Ctrl para múltiplos):</label>
+            <select name="ministerio_nomes[]" id="ministerio_nomes" class="form-select" multiple size="5">
+                {% for min in ministerios %}
+                    <option value="{{ min.nome }}">{{ min.nome }}</option>
+                {% endfor %}
+            </select>
+        </div>
+
+        <div class="mb-3" id="membro_field" style="display:none;">
+            <label for="membro_ids" class="form-label">Selecione Membro(s) (pressione Ctrl para múltiplos):</label>
+            <select name="membro_ids[]" id="membro_ids" class="form-select" multiple size="5">
+                {% for mem in membros %}
+                    <option value="{{ mem.id }}">{{ mem.nome }}</option>
+                {% endfor %}
+            </select>
+        </div>
+
+        <div class="mb-3">
+            <label for="assunto" class="form-label">Assunto (para e-mail):</label>
+            <input type="text" name="assunto" id="assunto" class="form-control" placeholder="Assunto">
+        </div>
+
+        <div class="mb-3">
+            <label for="corpo" class="form-label">Mensagem:</label>
+            <textarea name="corpo" id="corpo" class="form-control" rows="5" placeholder="Digite a mensagem aqui..."></textarea>
+        </div>
+
+        <button type="submit" class="btn btn-primary">Enviar</button>
+    </form>
+</div>
+
+<script>
+function toggleFields(tipo) {
+    var ministerioField = document.getElementById('ministerio_field');
+    var membroField = document.getElementById('membro_field');
+
+    ministerioField.style.display = 'none';
+    membroField.style.display = 'none';
+
+    if (tipo === 'ministerio') {
+        ministerioField.style.display = 'block';
+    } else if (tipo === 'individual') {
+        membroField.style.display = 'block';
+    }
+}
+</script>
+{% endblock %}
