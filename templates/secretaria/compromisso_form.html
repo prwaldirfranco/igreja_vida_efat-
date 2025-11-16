@@ -1,48 +1,121 @@
 {% extends 'base.html' %}
 
 {% block content %}
-<div class="container mt-5">
-    <h2 class="mb-4">{{ title }}</h2>
-    <form method="POST" class="needs-validation" novalidate>
-        {{ form.hidden_tag() }}  <!-- Para CSRF -->
+<style>
+    body { 
+        background: linear-gradient(to bottom, #e0f7fa, #ffffff); 
+        font-family: 'Roboto', sans-serif; 
+        color: #333; 
+    }
+    .page-header { 
+        background: #2196F3; 
+        color: white; 
+        padding: 30px 0; 
+        text-align: center; 
+        border-radius: 0 0 20px 20px; 
+        box-shadow: 0 4px 10px rgba(0,0,0,0.1); 
+    }
+    .page-header h2 { 
+        font-weight: 700; 
+        margin-bottom: 0; 
+    }
+    .form-card { 
+        background: white; 
+        border-radius: 15px; 
+        padding: 30px; 
+        box-shadow: 0 4px 15px rgba(0,0,0,0.1); 
+        margin-top: 20px; 
+    }
+    .form-label { 
+        font-weight: 500; 
+        color: #1976D2; 
+    }
+    .form-control, .form-select { 
+        border-radius: 10px; 
+        border: 1px solid #ddd; 
+        transition: border-color 0.3s; 
+    }
+    .form-control:focus, .form-select:focus { 
+        border-color: #2196F3; 
+        box-shadow: 0 0 0 0.2rem rgba(33, 150, 243, 0.25); 
+    }
+    .btn-primary { 
+        background: linear-gradient(135deg, #4CAF50, #66BB6A); 
+        border: none; 
+        border-radius: 10px; 
+        padding: 10px 20px; 
+        transition: background 0.3s, transform 0.3s; 
+    }
+    .btn-primary:hover { 
+        background: linear-gradient(135deg, #388E3C, #4CAF50); 
+        transform: translateY(-3px); 
+    }
+    .btn-secondary { 
+        background: linear-gradient(135deg, #9E9E9E, #BDBDBD); 
+        border: none; 
+        border-radius: 10px; 
+        padding: 10px 20px; 
+        transition: background 0.3s, transform 0.3s; 
+    }
+    .btn-secondary:hover { 
+        background: linear-gradient(135deg, #757575, #9E9E9E); 
+        transform: translateY(-3px); 
+    }
+    .fade-in { 
+        animation: fadeIn 1.5s ease-in; 
+    }
+    @keyframes fadeIn { 
+        from { opacity: 0; transform: translateY(20px); } 
+        to { opacity: 1; transform: translateY(0); } 
+    }
+</style>
+<div class="page-header fade-in">
+    <h2>{{ title }} ✨</h2>
+</div>
 
-        <div class="mb-3">
-            <label for="titulo" class="form-label">{{ form.titulo.label }}</label>
-            {{ form.titulo(class="form-control") }}
-            <div class="invalid-feedback">Por favor, preencha o título.</div>
-        </div>
+<div class="container py-5 fade-in">
+    <div class="form-card">
+        <form method="POST" class="needs-validation" novalidate>
+            {{ form.hidden_tag() }}  <!-- Para CSRF -->
 
-        <div class="mb-3">
-            <label for="descricao" class="form-label">{{ form.descricao.label }}</label>
-            {{ form.descricao(class="form-control", rows=4) }}
-        </div>
+            <div class="mb-3">
+                <label for="titulo" class="form-label">{{ form.titulo.label }}</label>
+                {{ form.titulo(class="form-control") }}
+                <div class="invalid-feedback">Por favor, preencha o título.</div>
+            </div>
 
-        <div class="mb-3">
-            <label for="data" class="form-label">{{ form.data.label }}</label>
-            {{ form.data(class="form-control") }}
-            <div class="invalid-feedback">Por favor, selecione uma data válida.</div>
-        </div>
+            <div class="mb-3">
+                <label for="descricao" class="form-label">{{ form.descricao.label }}</label>
+                {{ form.descricao(class="form-control", rows=4) }}
+            </div>
 
-        <div class="mb-3">
-            <label for="hora" class="form-label">{{ form.hora.label }}</label>
-            {{ form.hora(class="form-control") }}
-        </div>
+            <div class="mb-3">
+                <label for="data" class="form-label">{{ form.data.label }}</label>
+                {{ form.data(class="form-control") }}
+                <div class="invalid-feedback">Por favor, selecione uma data válida.</div>
+            </div>
 
-        <div class="mb-3">
-            <label for="local" class="form-label">{{ form.local.label }}</label>
-            {{ form.local(class="form-control") }}
-        </div>
+            <div class="mb-3">
+                <label for="hora" class="form-label">{{ form.hora.label }}</label>
+                {{ form.hora(class="form-control") }}
+            </div>
 
-        <div class="mb-3">
-            <label for="membro_id" class="form-label">{{ form.membro_id.label }}</label>
-            {{ form.membro_id(class="form-select") }}
-        </div>
+            <div class="mb-3">
+                <label for="local" class="form-label">{{ form.local.label }}</label>
+                {{ form.local(class="form-control") }}
+            </div>
 
-        <div class="d-flex justify-content-between">
-            {{ form.submit(class="btn btn-primary") }}
-            <a href="{{ url_for('agenda') }}" class="btn btn-secondary">Cancelar</a>
-        </div>
-    </form>
+            <div class="mb-3">
+                <label for="membro_id" class="form-label">{{ form.membro_id.label }}</label>
+                {{ form.membro_id(class="form-select") }}
+            </div>
+
+            <div class="d-flex justify-content-between">
+                {{ form.submit(class="btn btn-primary") }}
+                <a href="{{ url_for('agenda') }}" class="btn btn-secondary">Cancelar</a>
+            </div>
+        </form>
+    </div>
 </div>
 
 <script>

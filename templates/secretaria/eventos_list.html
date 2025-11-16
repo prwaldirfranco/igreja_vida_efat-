@@ -1,5 +1,4 @@
-{% extends 'base.html' %}
-
+{% extends "base.html" %}
 {% block content %}
 <style>
     body { 
@@ -15,7 +14,7 @@
         border-radius: 0 0 20px 20px; 
         box-shadow: 0 4px 10px rgba(0,0,0,0.1); 
     }
-    .page-header h2 { 
+    .page-header h1 { 
         font-weight: 700; 
         margin-bottom: 0; 
     }
@@ -64,55 +63,49 @@
     }
 </style>
 <div class="page-header fade-in">
-    <h2>Agenda de Compromissos Pastorais ✨</h2>
+    <h1>Gerenciamento de Eventos ✨</h1>
 </div>
 
 <div class="container py-4 fade-in">
   <!-- Ações Rápidas -->
   <div class="d-flex justify-content-end mb-4">
-    <a href="{{ url_for('novo_compromisso') }}" class="action-btn">
-      <i class="bi bi-plus-circle me-2"></i> Adicionar Novo Compromisso
+    <a href="{{ url_for('novo_evento') }}" class="action-btn">
+      <i class="fas fa-plus me-2"></i>Novo Evento
     </a>
   </div>
 
-  <!-- Tabela de Compromissos -->
-  <div class="section-title">Lista de Compromissos</div>
+  <!-- Tabela de Eventos -->
+  <div class="section-title">Lista de Eventos</div>
   <div class="table-responsive">
     <table class="table table-hover mb-0 align-middle">
       <thead class="table-light">
         <tr>
           <th>Título</th>
           <th>Data</th>
-          <th>Hora</th>
-          <th>Local</th>
-          <th>Membro Relacionado</th>
           <th class="text-center">Ações</th>
         </tr>
       </thead>
       <tbody>
-        {% for comp in compromissos %}
+        {% for evento in eventos %}
         <tr>
-          <td class="fw-medium">{{ comp.titulo }}</td>
-          <td>{{ comp.data.strftime('%d/%m/%Y') }}</td>
-          <td>{{ comp.hora or 'Não especificado' }}</td>
-          <td>{{ comp.local or 'Não especificado' }}</td>
-          <td>{{ comp.membro.nome if comp.membro else 'Nenhum' }}</td>
+          <td class="fw-medium">{{ evento.titulo }}</td>
+          <td>{{ evento.data.strftime('%d/%m/%Y') }}</td>
           <td class="text-center">
-            <a href="{{ url_for('editar_compromisso', id=comp.id) }}" class="btn btn-outline-warning btn-sm me-2">
-              <i class="bi bi-pencil-square"></i> Editar
+            <a href="{{ url_for('editar_evento', id=evento.id) }}" class="btn btn-outline-warning btn-sm me-2">
+              <i class="fas fa-edit"></i> Editar
             </a>
-            <form method="POST" action="{{ url_for('excluir_compromisso', id=comp.id) }}" class="d-inline">
-              <button type="submit" class="btn btn-outline-danger btn-sm" onclick="return confirm('Tem certeza que deseja excluir este compromisso?');">
-                <i class="bi bi-trash"></i> Excluir
+            <form method="POST" action="{{ url_for('excluir_evento', id=evento.id) }}" class="d-inline">
+              <button type="submit" class="btn btn-outline-danger btn-sm" onclick="return confirm('Excluir?');">
+                <i class="fas fa-trash"></i> Excluir
               </button>
             </form>
           </td>
         </tr>
         {% else %}
         <tr>
-          <td colspan="6" class="text-center text-muted py-5">
+          <td colspan="3" class="text-center text-muted py-5">
             <i class="fas fa-calendar-times fs-1 mb-3 d-block"></i>
-            Nenhum compromisso registrado.
+            Nenhum evento cadastrado.
           </td>
         </tr>
         {% endfor %}

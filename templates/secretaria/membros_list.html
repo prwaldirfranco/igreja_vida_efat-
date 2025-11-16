@@ -1,204 +1,282 @@
 {% extends "includes/_layout.html" %}
 {% block title %}Membros{% endblock %}
 {% block content %}
-<div class="container-fluid py-4">
-  <div class="d-flex justify-content-between align-items-center mb-4">
-    <h2 class="h4 mb-0">Membros</h2>
-    <div class="d-flex gap-2">
-      <a href="{{ url_for('novo_membro') }}" class="btn btn-primary btn-sm">
-        Novo Membro
-      </a>
-      <a href="{{ url_for('importar_membros') }}" class="btn btn-success btn-sm">
-        Importar CSV
-      </a>
-    </div>
+<style>
+    body { 
+        background: linear-gradient(to bottom, #e0f7fa, #ffffff); 
+        font-family: 'Roboto', sans-serif; 
+        color: #333; 
+    }
+    .page-header { 
+        background: #2196F3; 
+        color: white; 
+        padding: 30px 0; 
+        text-align: center; 
+        border-radius: 0 0 20px 20px; 
+        box-shadow: 0 4px 10px rgba(0,0,0,0.1); 
+    }
+    .page-header h2 { 
+        font-weight: 700; 
+        margin-bottom: 0; 
+    }
+    .action-btn { 
+        background: linear-gradient(135deg, #4CAF50, #66BB6A); 
+        color: white; 
+        padding: 10px 20px; 
+        border-radius: 10px; 
+        transition: background 0.3s, transform 0.3s; 
+        text-decoration: none; 
+        font-size: 0.9em; 
+    }
+    .action-btn:hover { 
+        background: linear-gradient(135deg, #388E3C, #4CAF50); 
+        transform: translateY(-3px); 
+    }
+    .filter-card { 
+        background: white; 
+        border-radius: 15px; 
+        padding: 15px; 
+        box-shadow: 0 2px 10px rgba(0,0,0,0.05); 
+        margin-bottom: 20px; 
+    }
+    .section-title { 
+        font-weight: 600; 
+        margin: 20px 0 10px; 
+        color: #1976D2; 
+        border-bottom: 2px solid #2196F3; 
+        padding-bottom: 10px; 
+    }
+    .table { 
+        background: white; 
+        border-radius: 15px; 
+        overflow: hidden; 
+        box-shadow: 0 4px 15px rgba(0,0,0,0.1); 
+    }
+    .table th { 
+        background: #f5f5f5; 
+        font-weight: 600; 
+    }
+    .table td { 
+        vertical-align: middle; 
+    }
+    .table-hover tr:hover { 
+        background: #f0f4f8; 
+    }
+    .modal-content { 
+        border-radius: 15px; 
+        box-shadow: 0 10px 20px rgba(0,0,0,0.2); 
+    }
+    .modal-header { 
+        border-radius: 15px 15px 0 0; 
+    }
+    .fade-in { 
+        animation: fadeIn 1.5s ease-in; 
+    }
+    @keyframes fadeIn { 
+        from { opacity: 0; transform: translateY(20px); } 
+        to { opacity: 1; transform: translateY(0); } 
+    }
+</style>
+<div class="page-header fade-in">
+    <h2>Gerenciamento de Membros ✨</h2>
+</div>
+
+<div class="container py-4 fade-in">
+  <!-- Ações Rápidas -->
+  <div class="d-flex justify-content-end gap-3 mb-4">
+    <a href="{{ url_for('novo_membro') }}" class="action-btn">
+      <i class="fas fa-user-plus me-2"></i>Novo Membro
+    </a>
+    <a href="{{ url_for('importar_membros') }}" class="action-btn" style="background: linear-gradient(135deg, #2196F3, #42A5F5);">
+      <i class="fas fa-file-import me-2"></i>Importar CSV
+    </a>
   </div>
 
-  <!-- FILTROS: BUSCA + STATUS -->
-  <div class="row mb-3 g-2">
-    <div class="col-md-6">
-      <form method="GET" class="d-flex gap-2">
-        <input type="text" name="q" class="form-control form-control-sm" placeholder="Buscar por nome, celular ou e-mail..." value="{{ request.args.get('q', '') }}">
-        <button type="submit" class="btn btn-outline-secondary btn-sm">Buscar</button>
-        {% if request.args.get('q') %}
-        <a href="{{ url_for('listar_membros', status=request.args.get('status')) }}" class="btn btn-outline-danger btn-sm">Limpar</a>
-        {% endif %}
-      </form>
-    </div>
-    <div class="col-md-6">
-      <form method="GET" class="d-flex gap-2">
-        <select name="status" class="form-select form-select-sm w-auto" onchange="this.form.submit()">
-          <option value="">Todos os Status</option>
-          <option value="ativo" {% if request.args.get('status') == 'ativo' %}selected{% endif %}>Ativo</option>
-          <option value="inativo" {% if request.args.get('status') == 'inativo' %}selected{% endif %}>Inativo</option>
-          <option value="afastado" {% if request.args.get('status') == 'afastado' %}selected{% endif %}>Afastado</option>
-          <option value="nao_membro" {% if request.args.get('status') == 'nao_membro' %}selected{% endif %}>Não Membro</option>
-          <option value="visitante" {% if request.args.get('status') == 'visitante' %}selected{% endif %}>Visitante</option>
-        </select>
-        {% if request.args.get('q') %}
-        <input type="hidden" name="q" value="{{ request.args.get('q') }}">
-        {% endif %}
-        {% if request.args.get('status') and not request.args.get('q') %}
-        <a href="{{ url_for('listar_membros') }}" class="btn btn-outline-secondary btn-sm">Limpar</a>
-        {% endif %}
-      </form>
-    </div>
-  </div>
-
-  <div class="card border-0 shadow-sm">
-    <div class="card-body p-0">
-      <div class="table-responsive">
-        <table class="table table-hover mb-0 align-middle">
-          <thead class="table-light">
-            <tr>
-              <th class="ps-3">Foto</th>
-              <th>Nome</th>
-              <th>Celular</th>
-              <th>E-mail</th>
-              <th>Ministério</th>
-              <th>Status</th>
-              <th class="text-center">Ações</th>
-            </tr>
-          </thead>
-          <tbody>
-            {% for m in membros %}
-            <tr data-id="{{ m.id }}">
-              <td class="ps-3">
-                <!-- FOTO COM FALLBACK -->
-                {% if m.foto and m.foto != 'default.jpg' %}
-                  <img src="{{ url_for('uploaded_file', filename=m.foto) }}"
-                       class="rounded-circle object-fit-cover" width="40" height="40"
-                       alt="{{ m.nome }}"
-                       onerror="this.src='{{ url_for('uploaded_file', filename='default.jpg') }}'">
-                {% else %}
-                  <img src="{{ url_for('uploaded_file', filename='default.jpg') }}"
-                       class="rounded-circle object-fit-cover" width="40" height="40"
-                       alt="Sem foto">
-                {% endif %}
-              </td>
-              <td class="fw-medium">{{ m.nome }}</td>
-              <td>{{ m.celular or '-' }}</td>
-              <td><small class="text-muted">{{ m.email or '-' }}</small></td>
-              <td>
-                {% if m.ministerio %}
-                  <span class="badge bg-info text-dark">{{ m.ministerio }}</span>
-                {% else %}
-                  <span class="text-muted">—</span>
-                {% endif %}
-              </td>
-              <td>
-                <span class="badge
-                  {% if m.status == 'ativo' %}bg-success
-                  {% elif m.status == 'inativo' %}bg-secondary
-                  {% elif m.status == 'afastado' %}bg-warning text-dark
-                  {% elif m.status == 'nao_membro' %}bg-info text-dark
-                  {% elif m.status == 'visitante' %}bg-light text-dark border
-                  {% else %}bg-dark text-white{% endif %}">
-                  {{ m.status|replace('_', ' ')|title }}
-                </span>
-              </td>
-              <td class="text-center">
-                <!-- BOTÃO EDITAR ABRE MODAL -->
-                <button class="btn btn-outline-primary btn-sm" data-bs-toggle="modal" data-bs-target="#editModal{{ m.id }}">
-                  Editar
-                </button>
-                <!-- BOTÃO EXCLUIR -->
-                <form method="POST" action="{{ url_for('excluir_membro', id=m.id) }}" class="d-inline">
-                  <button type="submit" class="btn btn-outline-danger btn-sm" onclick="return confirm('Tem certeza que deseja excluir {{ m.nome }}?')">
-                    Excluir
-                  </button>
-                </form>
-              </td>
-            </tr>
-
-            <!-- MODAL DE EDIÇÃO -->
-            <div class="modal fade" id="editModal{{ m.id }}" tabindex="-1" aria-hidden="true">
-              <div class="modal-dialog modal-lg">
-                <div class="modal-content">
-                  <div class="modal-header bg-primary text-white">
-                    <h6 class="modal-title">Editar {{ m.nome }}</h6>
-                    <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Fechar"></button>
-                  </div>
-                  <form method="POST" action="{{ url_for('editar_membro', id=m.id) }}" enctype="multipart/form-data" class="edit-form">
-                    <div class="modal-body">
-                      <!-- FOTO ATUAL + UPLOAD -->
-                      <div class="text-center mb-3">
-                        <img src="{{ url_for('uploaded_file', filename=(m.foto or 'default.jpg')) }}"
-                             class="rounded-circle object-fit-cover" width="100" height="100"
-                             alt="{{ m.nome }}"
-                             onerror="this.src='{{ url_for('uploaded_file', filename='default.jpg') }}'">
-                        <div class="mt-2">
-                          <input type="file" name="foto" class="form-control form-control-sm" accept="image/*">
-                          <small class="text-muted">Deixe em branco para manter a foto atual</small>
-                        </div>
-                      </div>
-
-                      <div class="row g-3">
-                        <div class="col-md-6">
-                          <label class="form-label small">Nome</label>
-                          <input type="text" name="nome" class="form-control form-control-sm" value="{{ m.nome }}" required>
-                        </div>
-                        <div class="col-md-6">
-                          <label class="form-label small">E-mail</label>
-                          <input type="email" name="email" class="form-control form-control-sm" value="{{ m.email or '' }}">
-                        </div>
-                        <div class="col-md-4">
-                          <label class="form-label small">Celular</label>
-                          <input type="text" name="celular" class="form-control form-control-sm" value="{{ m.celular or '' }}">
-                        </div>
-                        <div class="col-md-4">
-                          <label class="form-label small">Ministério</label>
-                          <select name="ministerio" class="form-select form-select-sm">
-                            <option value="">-- Nenhum --</option>
-                            {% for min in ministerios %}
-                              <option value="{{ min.nome }}" {% if m.ministerio == min.nome %}selected{% endif %}>
-                                {{ min.nome }}
-                              </option>
-                            {% endfor %}
-                          </select>
-                        </div>
-                        <div class="col-md-4">
-                          <label class="form-label small">Estado Civil</label>
-                          <select name="estado_civil" class="form-select form-select-sm">
-                            <option value="">--</option>
-                            <option value="solteiro" {% if m.estado_civil == 'solteiro' %}selected{% endif %}>Solteiro(a)</option>
-                            <option value="casado" {% if m.estado_civil == 'casado' %}selected{% endif %}>Casado(a)</option>
-                            <option value="viuvo" {% if m.estado_civil == 'viuvo' %}selected{% endif %}>Viúvo(a)</option>
-                            <option value="divorciado" {% if m.estado_civil == 'divorciado' %}selected{% endif %}>Divorciado(a)</option>
-                          </select>
-                        </div>
-                        <div class="col-md-4">
-                          <label class="form-label small">Status</label>
-                          <select name="status" class="form-select form-select-sm" required>
-                            <option value="ativo" {% if m.status == 'ativo' %}selected{% endif %}>Ativo</option>
-                            <option value="inativo" {% if m.status == 'inativo' %}selected{% endif %}>Inativo</option>
-                            <option value="afastado" {% if m.status == 'afastado' %}selected{% endif %}>Afastado</option>
-                            <option value="nao_membro" {% if m.status == 'nao_membro' %}selected{% endif %}>Não Membro</option>
-                            <option value="visitante" {% if m.status == 'visitante' %}selected{% endif %}>Visitante</option>
-                          </select>
-                        </div>
-                      </div>
-                    </div>
-                    <div class="modal-footer">
-                      <button type="button" class="btn btn-secondary btn-sm" data-bs-dismiss="modal">Cancelar</button>
-                      <button type="submit" class="btn btn-primary btn-sm">Salvar Alterações</button>
-                    </div>
-                  </form>
-                </div>
-              </div>
-            </div>
-            {% else %}
-            <tr>
-              <td colspan="7" class="text-center text-muted py-5">
-                <i class="bi bi-people fs-1"></i><br>
-                Nenhum membro encontrado.
-              </td>
-            </tr>
-            {% endfor %}
-          </tbody>
-        </table>
+  <!-- Filtros em Card -->
+  <div class="filter-card">
+    <div class="row g-3">
+      <div class="col-md-6">
+        <form method="GET" class="d-flex gap-2">
+          <input type="text" name="q" class="form-control" placeholder="Buscar por nome, celular ou e-mail..." value="{{ request.args.get('q', '') }}">
+          <button type="submit" class="btn btn-primary"><i class="fas fa-search"></i> Buscar</button>
+          {% if request.args.get('q') %}
+          <a href="{{ url_for('listar_membros', status=request.args.get('status')) }}" class="btn btn-outline-danger">Limpar</a>
+          {% endif %}
+        </form>
+      </div>
+      <div class="col-md-6">
+        <form method="GET" class="d-flex gap-2">
+          <select name="status" class="form-select" onchange="this.form.submit()">
+            <option value="">Todos os Status</option>
+            <option value="ativo" {% if request.args.get('status') == 'ativo' %}selected{% endif %}>Ativo</option>
+            <option value="inativo" {% if request.args.get('status') == 'inativo' %}selected{% endif %}>Inativo</option>
+            <option value="afastado" {% if request.args.get('status') == 'afastado' %}selected{% endif %}>Afastado</option>
+            <option value="nao_membro" {% if request.args.get('status') == 'nao_membro' %}selected{% endif %}>Não Membro</option>
+            <option value="visitante" {% if request.args.get('status') == 'visitante' %}selected{% endif %}>Visitante</option>
+          </select>
+          {% if request.args.get('q') %}
+          <input type="hidden" name="q" value="{{ request.args.get('q') }}">
+          {% endif %}
+          {% if request.args.get('status') and not request.args.get('q') %}
+          <a href="{{ url_for('listar_membros') }}" class="btn btn-outline-secondary">Limpar</a>
+          {% endif %}
+        </form>
       </div>
     </div>
+  </div>
+
+  <!-- Tabela de Membros -->
+  <div class="section-title">Lista de Membros</div>
+  <div class="table-responsive">
+    <table class="table table-hover mb-0 align-middle">
+      <thead class="table-light">
+        <tr>
+          <th class="ps-3">Foto</th>
+          <th>Nome</th>
+          <th>Celular</th>
+          <th>E-mail</th>
+          <th>Ministério</th>
+          <th>Status</th>
+          <th class="text-center">Ações</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for m in membros %}
+        <tr data-id="{{ m.id }}">
+          <td class="ps-3">
+            <!-- FOTO COM FALLBACK -->
+            {% if m.foto and m.foto != 'default.jpg' %}
+              <img src="{{ url_for('uploaded_file', filename=m.foto) }}"
+                   class="rounded-circle object-fit-cover" width="40" height="40"
+                   alt="{{ m.nome }}"
+                   onerror="this.src='{{ url_for('uploaded_file', filename='default.jpg') }}'">
+            {% else %}
+              <img src="{{ url_for('uploaded_file', filename='default.jpg') }}"
+                   class="rounded-circle object-fit-cover" width="40" height="40"
+                   alt="Sem foto">
+            {% endif %}
+          </td>
+          <td class="fw-medium">{{ m.nome }}</td>
+          <td>{{ m.celular or '-' }}</td>
+          <td><small class="text-muted">{{ m.email or '-' }}</small></td>
+          <td>
+            {% if m.ministerio %}
+              <span class="badge bg-info text-dark">{{ m.ministerio }}</span>
+            {% else %}
+              <span class="text-muted">—</span>
+            {% endif %}
+          </td>
+          <td>
+            <span class="badge
+              {% if m.status == 'ativo' %}bg-success
+              {% elif m.status == 'inativo' %}bg-secondary
+              {% elif m.status == 'afastado' %}bg-warning text-dark
+              {% elif m.status == 'nao_membro' %}bg-info text-dark
+              {% elif m.status == 'visitante' %}bg-light text-dark border
+              {% else %}bg-dark text-white{% endif %}">
+              {{ m.status|replace('_', ' ')|title }}
+            </span>
+          </td>
+          <td class="text-center">
+            <!-- BOTÃO EDITAR ABRE MODAL -->
+            <button class="btn btn-outline-primary btn-sm" data-bs-toggle="modal" data-bs-target="#editModal{{ m.id }}">
+              Editar
+            </button>
+            <!-- BOTÃO EXCLUIR -->
+            <form method="POST" action="{{ url_for('excluir_membro', id=m.id) }}" class="d-inline">
+              <button type="submit" class="btn btn-outline-danger btn-sm" onclick="return confirm('Tem certeza que deseja excluir {{ m.nome }}?')">
+                Excluir
+              </button>
+            </form>
+          </td>
+        </tr>
+
+        <!-- MODAL DE EDIÇÃO -->
+        <div class="modal fade" id="editModal{{ m.id }}" tabindex="-1" aria-hidden="true">
+          <div class="modal-dialog modal-lg">
+            <div class="modal-content">
+              <div class="modal-header bg-primary text-white">
+                <h6 class="modal-title">Editar {{ m.nome }}</h6>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Fechar"></button>
+              </div>
+              <form method="POST" action="{{ url_for('editar_membro', id=m.id) }}" enctype="multipart/form-data" class="edit-form">
+                <div class="modal-body">
+                  <!-- FOTO ATUAL + UPLOAD -->
+                  <div class="text-center mb-3">
+                    <img src="{{ url_for('uploaded_file', filename=(m.foto or 'default.jpg')) }}"
+                         class="rounded-circle object-fit-cover" width="100" height="100"
+                         alt="{{ m.nome }}"
+                         onerror="this.src='{{ url_for('uploaded_file', filename='default.jpg') }}'">
+                    <div class="mt-2">
+                      <input type="file" name="foto" class="form-control form-control-sm" accept="image/*">
+                      <small class="text-muted">Deixe em branco para manter a foto atual</small>
+                    </div>
+                  </div>
+
+                  <div class="row g-3">
+                    <div class="col-md-6">
+                      <label class="form-label small">Nome</label>
+                      <input type="text" name="nome" class="form-control form-control-sm" value="{{ m.nome }}" required>
+                    </div>
+                    <div class="col-md-6">
+                      <label class="form-label small">E-mail</label>
+                      <input type="email" name="email" class="form-control form-control-sm" value="{{ m.email or '' }}">
+                    </div>
+                    <div class="col-md-4">
+                      <label class="form-label small">Celular</label>
+                      <input type="text" name="celular" class="form-control form-control-sm" value="{{ m.celular or '' }}">
+                    </div>
+                    <div class="col-md-4">
+                      <label class="form-label small">Ministério</label>
+                      <select name="ministerio" class="form-select form-select-sm">
+                        <option value="">-- Nenhum --</option>
+                        {% for min in ministerios %}
+                          <option value="{{ min.nome }}" {% if m.ministerio == min.nome %}selected{% endif %}>
+                            {{ min.nome }}
+                          </option>
+                        {% endfor %}
+                      </select>
+                    </div>
+                    <div class="col-md-4">
+                      <label class="form-label small">Estado Civil</label>
+                      <select name="estado_civil" class="form-select form-select-sm">
+                        <option value="">--</option>
+                        <option value="solteiro" {% if m.estado_civil == 'solteiro' %}selected{% endif %}>Solteiro(a)</option>
+                        <option value="casado" {% if m.estado_civil == 'casado' %}selected{% endif %}>Casado(a)</option>
+                        <option value="viuvo" {% if m.estado_civil == 'viuvo' %}selected{% endif %}>Viúvo(a)</option>
+                        <option value="divorciado" {% if m.estado_civil == 'divorciado' %}selected{% endif %}>Divorciado(a)</option>
+                      </select>
+                    </div>
+                    <div class="col-md-4">
+                      <label class="form-label small">Status</label>
+                      <select name="status" class="form-select form-select-sm" required>
+                        <option value="ativo" {% if m.status == 'ativo' %}selected{% endif %}>Ativo</option>
+                        <option value="inativo" {% if m.status == 'inativo' %}selected{% endif %}>Inativo</option>
+                        <option value="afastado" {% if m.status == 'afastado' %}selected{% endif %}>Afastado</option>
+                        <option value="nao_membro" {% if m.status == 'nao_membro' %}selected{% endif %}>Não Membro</option>
+                        <option value="visitante" {% if m.status == 'visitante' %}selected{% endif %}>Visitante</option>
+                      </select>
+                    </div>
+                  </div>
+                </div>
+                <div class="modal-footer">
+                  <button type="button" class="btn btn-secondary btn-sm" data-bs-dismiss="modal">Cancelar</button>
+                  <button type="submit" class="btn btn-primary btn-sm">Salvar Alterações</button>
+                </div>
+              </form>
+            </div>
+          </div>
+        </div>
+        {% else %}
+        <tr>
+          <td colspan="7" class="text-center text-muted py-5">
+            <i class="fas fa-users fs-1 mb-3 d-block"></i>
+            Nenhum membro encontrado.
+          </td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
   </div>
 </div>
 

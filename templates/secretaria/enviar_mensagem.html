@@ -1,56 +1,122 @@
 {% extends 'base.html' %}
 
 {% block content %}
-<div class="container mt-5">
-    <h2 class="mb-4">Enviar Mensagem para Membros</h2>
-    <form method="POST" class="needs-validation" novalidate>
-        <div class="mb-3">
-            <label for="tipo" class="form-label">Tipo de Mensagem:</label>
-            <select name="tipo" id="tipo" class="form-select">
-                <option value="email">E-mail</option>
-                <option value="sms">SMS</option>
-            </select>
-        </div>
+<style>
+    body { 
+        background: linear-gradient(to bottom, #e0f7fa, #ffffff); 
+        font-family: 'Roboto', sans-serif; 
+        color: #333; 
+    }
+    .page-header { 
+        background: #2196F3; 
+        color: white; 
+        padding: 30px 0; 
+        text-align: center; 
+        border-radius: 0 0 20px 20px; 
+        box-shadow: 0 4px 10px rgba(0,0,0,0.1); 
+    }
+    .page-header h2 { 
+        font-weight: 700; 
+        margin-bottom: 0; 
+    }
+    .form-card { 
+        background: white; 
+        border-radius: 15px; 
+        padding: 30px; 
+        box-shadow: 0 4px 15px rgba(0,0,0,0.1); 
+        margin-top: 20px; 
+    }
+    .form-label { 
+        font-weight: 500; 
+        color: #1976D2; 
+    }
+    .form-control, .form-select { 
+        border-radius: 10px; 
+        border: 1px solid #ddd; 
+        transition: border-color 0.3s; 
+    }
+    .form-control:focus, .form-select:focus { 
+        border-color: #2196F3; 
+        box-shadow: 0 0 0 0.2rem rgba(33, 150, 243, 0.25); 
+    }
+    .btn-primary { 
+        background: linear-gradient(135deg, #4CAF50, #66BB6A); 
+        border: none; 
+        border-radius: 10px; 
+        padding: 10px 20px; 
+        transition: background 0.3s, transform 0.3s; 
+    }
+    .btn-primary:hover { 
+        background: linear-gradient(135deg, #388E3C, #4CAF50); 
+        transform: translateY(-3px); 
+    }
+    .fade-in { 
+        animation: fadeIn 1.5s ease-in; 
+    }
+    @keyframes fadeIn { 
+        from { opacity: 0; transform: translateY(20px); } 
+        to { opacity: 1; transform: translateY(0); } 
+    }
+</style>
+<div class="page-header fade-in">
+    <h2>Enviar Mensagem para Membros ✨</h2>
+</div>
 
-        <div class="mb-3">
-            <label for="destinatario_tipo" class="form-label">Destinatário:</label>
-            <select name="destinatario_tipo" id="destinatario_tipo" class="form-select" onchange="toggleFields(this.value)">
-                <option value="todos">Todos os Membros</option>
-                <option value="ministerio">Por Ministério(s)</option>
-                <option value="individual">Individual(is)</option>
-            </select>
-        </div>
+<div class="container py-5 fade-in">
+    <div class="form-card">
+        <form method="POST" class="needs-validation" novalidate>
+            <div class="mb-3">
+                <label for="tipo" class="form-label">Tipo de Mensagem:</label>
+                <select name="tipo" id="tipo" class="form-select">
+                    <option value="email">E-mail</option>
+                    <option value="sms">SMS</option>
+                </select>
+            </div>
 
-        <div class="mb-3" id="ministerio_field" style="display:none;">
-            <label for="ministerio_nomes" class="form-label">Selecione Ministério(s) (pressione Ctrl para múltiplos):</label>
-            <select name="ministerio_nomes[]" id="ministerio_nomes" class="form-select" multiple size="5">
-                {% for min in ministerios %}
-                    <option value="{{ min.nome }}">{{ min.nome }}</option>
-                {% endfor %}
-            </select>
-        </div>
+            <div class="mb-3">
+                <label for="destinatario_tipo" class="form-label">Destinatário:</label>
+                <select name="destinatario_tipo" id="destinatario_tipo" class="form-select" onchange="toggleFields(this.value)">
+                    <option value="todos">Todos os Membros</option>
+                    <option value="ministerio">Por Ministério(s)</option>
+                    <option value="individual">Individual(is)</option>
+                </select>
+            </div>
 
-        <div class="mb-3" id="membro_field" style="display:none;">
-            <label for="membro_ids" class="form-label">Selecione Membro(s) (pressione Ctrl para múltiplos):</label>
-            <select name="membro_ids[]" id="membro_ids" class="form-select" multiple size="5">
-                {% for mem in membros %}
-                    <option value="{{ mem.id }}">{{ mem.nome }}</option>
-                {% endfor %}
-            </select>
-        </div>
+            <div class="mb-3" id="ministerio_field" style="display:none;">
+                <label for="ministerio_nomes" class="form-label">Selecione Ministério(s) (pressione Ctrl para múltiplos):</label>
+                <select name="ministerio_nomes[]" id="ministerio_nomes" class="form-select" multiple size="5">
+                    {% for min in ministerios %}
+                        <option value="{{ min.nome }}">{{ min.nome }}</option>
+                    {% endfor %}
+                </select>
+            </div>
 
-        <div class="mb-3">
-            <label for="assunto" class="form-label">Assunto (para e-mail):</label>
-            <input type="text" name="assunto" id="assunto" class="form-control" placeholder="Assunto">
-        </div>
+            <div class="mb-3" id="membro_field" style="display:none;">
+                <label for="membro_ids" class="form-label">Selecione Membro(s) (pressione Ctrl para múltiplos):</label>
+                <select name="membro_ids[]" id="membro_ids" class="form-select" multiple size="5">
+                    {% for mem in membros %}
+                        <option value="{{ mem.id }}">{{ mem.nome }}</option>
+                    {% endfor %}
+                </select>
+            </div>
 
-        <div class="mb-3">
-            <label for="corpo" class="form-label">Mensagem:</label>
-            <textarea name="corpo" id="corpo" class="form-control" rows="5" placeholder="Digite a mensagem aqui..."></textarea>
-        </div>
+            <div class="mb-3">
+                <label for="assunto" class="form-label">Assunto (para e-mail):</label>
+                <input type="text" name="assunto" id="assunto" class="form-control" placeholder="Assunto">
+            </div>
 
-        <button type="submit" class="btn btn-primary">Enviar</button>
-    </form>
+            <div class="mb-3">
+                <label for="corpo" class="form-label">Mensagem:</label>
+                <textarea name="corpo" id="corpo" class="form-control" rows="5" placeholder="Digite a mensagem aqui..."></textarea>
+            </div>
+
+            <div class="text-center">
+                <button type="submit" class="btn btn-primary">
+                    <i class="fas fa-paper-plane me-2"></i>Enviar
+                </button>
+            </div>
+        </form>
+    </div>
 </div>
 
 <script>

@@ -37,7 +37,7 @@ app.config['ALLOWED_EXTENSIONS'] = {
     'png', 'jpg', 'jpeg', 'gif', 'webp', 'svg', 'bmp', 'tiff', 'heic', 'avif'
 }
 
-# E‑mail
+# E-mail
 app.config['MAIL_SERVER'] = 'smtp.gmail.com'
 app.config['MAIL_PORT'] = 587
 app.config['MAIL_USE_TLS'] = True
@@ -241,7 +241,7 @@ class UsuarioForm(FlaskForm):
 
 class MembroForm(FlaskForm):
     nome = StringField("Nome Completo", validators=[DataRequired()])
-    email = StringField("E‑mail", validators=[Email(), Optional()])
+    email = StringField("E-mail", validators=[Email(), Optional()])
     telefone = StringField("Telefone Fixo")
     celular = StringField("Celular (WhatsApp)", validators=[DataRequired()])
     cep = StringField("CEP")
@@ -427,6 +427,80 @@ def secretaria():
                            transacoes_total=transacoes_total,
                            eventos=eventos,
                            compromissos=compromissos)
+
+# ================================
+# LEA DASHBOARD (NOVA PÁGINA PERSONALIZADA)
+# ================================
+@app.route('/lea')
+@login_required
+@secretaria_required
+def lea_dashboard():
+    # Verifica se o usuário atual é "Lea" (baseado no nome ou email; ajuste conforme necessário)
+    if not current_user.is_admin and current_user.nome.lower() != 'lea' and current_user.email.lower() != 'lea@example.com':
+        flash("Acesso restrito a Lea.", "danger")
+        return redirect(url_for('secretaria'))
+
+    # Dados semelhantes ao dashboard padrão, mas pode ser customizado
+    membros_count = Membro.query.count()
+    eventos_count = Evento.query.count()
+    ministerios_count = Ministerio.query.count()
+    compromissos_hoje = Compromisso.query.filter(Compromisso.data == datetime.now().date()).count()
+    mensagens_enviadas = 0  # Pode adicionar lógica para contar mensagens enviadas, se houver modelo
+
+    # Lista de compromissos próximos
+    compromissos = Compromisso.query.filter(Compromisso.data >= datetime.now().date())\
+        .order_by(Compromisso.data.asc()).limit(5).all()
+
+    # Lista de eventos recentes
+    eventos = Evento.query.order_by(Evento.data.desc()).limit(5).all()
+
+    return render_template('secretaria/lea_dashboard.html',
+                           membros_count=membros_count,
+                           eventos_count=eventos_count,
+                           ministerios_count=ministerios_count,
+                           compromissos_hoje=compromissos_hoje,
+                           mensagens_enviadas=mensagens_enviadas,
+                           compromissos=compromissos,
+                           eventos=eventos)
+
+# ================================
+# EVENTOS - NOVA ROTA PARA LISTAGEM (POIS NÃO EXISTIA ANTES)
+# ================================
+@app.route('/secretaria/eventos')
+@secretaria_required
+@login_required
+def listar_eventos():
+    eventos = Evento.query.order_by(Evento.data.desc()).all()
+    return render_template('secretaria/eventos_list.html', eventos=eventos)
+
+@app.route('/secretaria/eventos/editar/<int:id>', methods=['GET', 'POST'])
+@secretaria_required
+@login_required
+def editar_evento(id):
+    evento = Evento.query.get_or_404(id)
+    form = EventoForm(obj=evento)
+    if form.validate_on_submit():
+        evento.titulo = form.titulo.data
+        evento.descricao = form.descricao.data
+        evento.data = form.data.data
+        if form.imagem.data:
+            filename = secure_filename(form.imagem.data.filename)
+            form.imagem.data.save(os.path.join(app.config['UPLOAD_FOLDER'], filename))
+            evento.imagem = filename
+        db.session.commit()
+        flash("Evento atualizado com sucesso!", "success")
+        return redirect(url_for('listar_eventos'))
+    return render_template('secretaria/eventos_form.html', form=form, title="Editar Evento")
+
+@app.route('/secretaria/eventos/excluir/<int:id>', methods=['POST'])
+@secretaria_required
+@login_required
+def excluir_evento(id):
+    evento = Evento.query.get_or_404(id)
+    db.session.delete(evento)
+    db.session.commit()
+    flash("Evento excluído com sucesso!", "info")
+    return redirect(url_for('listar_eventos'))
 
 # ================================
 # CUSTOS FIXOS
@@ -857,10 +931,10 @@ def financeiro():
         ).order_by(Transacao.data.desc()).all()
 
     # === CÁLCULOS CORRETOS ===
-    total_entradas = sum(t.valor for t in transacoes if t.tipo in ['dizimo', 'oferta', 'doacao'])
-    total_saidas = sum(t.valor for t in transacoes if t.tipo == 'despesa')
-    total_fixos_trans = sum(t.valor for t in transacoes if t.is_fixo)
-    total_fixos_cfg = sum(c.valor for c in CustoFixo.query.filter_by(ativo=True).all())
+    total_entradas = sum(t.valor for t in transacoes if t.tipo in ['dizimo', 'oferta', 'doacao']) if transacoes else 0
+    total_saidas = sum(t.valor for t in transacoes if t.tipo == 'despesa') if transacoes else 0
+    total_fixos_trans = sum(t.valor for t in transacoes if t.is_fixo) if transacoes else 0
+    total_fixos_cfg = sum(c.valor for c in CustoFixo.query.filter_by(ativo=True).all()) if CustoFixo.query.filter_by(ativo=True).all() else 0
     total_fixos = total_fixos_trans + total_fixos_cfg
 
     # Provisão Extras (do config)
@@ -922,9 +996,9 @@ def financeiro():
         mes_atual=mes_atual,
         saldo_status=saldo_status,
         is_membro=is_restrito,
-        custos_fixos=custos_fixos
+        custos_fixos=custos_fixos,
+        membros=membros
     )
-
 
 @app.route('/financeiro_membro')
 @login_required
@@ -944,8 +1018,8 @@ def financeiro_membro():
         .filter(Transacao.data >= inicio, Transacao.data <= fim)\
         .order_by(Transacao.data.desc()).all()
 
-    total_entradas = sum(t.valor for t in transacoes if t.tipo in ['dizimo', 'oferta', 'doacao'])
-    total_saidas = sum(t.valor for t in transacoes if t.tipo == 'despesa')
+    total_entradas = sum(t.valor for t in transacoes if t.tipo in ['dizimo', 'oferta', 'doacao']) if transacoes else 0
+    total_saidas = sum(t.valor for t in transacoes if t.tipo == 'despesa') if transacoes else 0
     saldo_final = total_entradas - total_saidas
 
     meses_grafico, saldos_grafico = gerar_dados_grafico()
@@ -1047,44 +1121,70 @@ def excluir_custo_fixo(id):
     return redirect(url_for('configurar_financeiro'))
 
 # ================================
-# EXPORTAÇÃO
+# EXPORTAÇÃO (MELHORADA COM FILTROS POR ANO E MEMBRO)
 # ================================
 @app.route('/exportar/pdf')
 @financeiro_required
 @login_required
 def exportar_pdf():
-    mes = request.args.get('mes', datetime.now().strftime('%Y-%m'))
+    mes = request.args.get('mes')
+    ano = request.args.get('ano')
+    membro_id = request.args.get('membro_id')
     tipo = request.args.get('tipo', 'todos')
+
     q = Transacao.query
+    if membro_id:
+        q = q.filter(Transacao.membro_id == int(membro_id))
+        titulo = f'Relatório por Membro ID {membro_id}'
+    else:
+        titulo = 'Relatório Financeiro'
+
     if mes:
         q = q.filter(func.strftime('%Y-%m', Transacao.data) == mes)
+        titulo += f' (Mês: {mes})'
+    elif ano:
+        q = q.filter(func.strftime('%Y', Transacao.data) == ano)
+        titulo += f' (Ano: {ano})'
+
     if tipo != 'todos':
         q = q.filter(Transacao.tipo == tipo)
+
     transacoes = q.order_by(Transacao.data.desc()).all()
-    total = sum(t.valor for t in transacoes)
+    total = sum(t.valor for t in transacoes) if transacoes else 0
 
     html = render_template('relatorios/pdf_financeiro.html',
-                           transacoes=transacoes, total_geral=total, mes=mes)
+                           transacoes=transacoes, total_geral=total, titulo=titulo)
     caminho_wk = os.getenv('WKHTMLTOPDF_PATH', r'C:\Program Files\wkhtmltopdf\bin\wkhtmltopdf.exe')
     cfg = pdfkit.configuration(wkhtmltopdf=caminho_wk)
     pdf = pdfkit.from_string(html, False, configuration=cfg)
 
+    filename = f'relatorio_{mes or ano or "completo"}.pdf'
     resp = make_response(pdf)
     resp.headers['Content-Type'] = 'application/pdf'
-    resp.headers['Content-Disposition'] = f'attachment; filename=financeiro_{mes}.pdf'
+    resp.headers['Content-Disposition'] = f'attachment; filename={filename}'
     return resp
 
 @app.route('/exportar/excel')
 @financeiro_required
 @login_required
 def exportar_excel():
-    mes = request.args.get('mes', datetime.now().strftime('%Y-%m'))
+    mes = request.args.get('mes')
+    ano = request.args.get('ano')
+    membro_id = request.args.get('membro_id')
     tipo = request.args.get('tipo', 'todos')
+
     q = Transacao.query
+    if membro_id:
+        q = q.filter(Transacao.membro_id == int(membro_id))
+
     if mes:
         q = q.filter(func.strftime('%Y-%m', Transacao.data) == mes)
+    elif ano:
+        q = q.filter(func.strftime('%Y', Transacao.data) == ano)
+
     if tipo != 'todos':
         q = q.filter(Transacao.tipo == tipo)
+
     transacoes = q.order_by(Transacao.data.desc()).all()
 
     data = [{
@@ -1101,10 +1201,11 @@ def exportar_excel():
     df.to_excel(output, index=False)
     output.seek(0)
 
+    filename = f'relatorio_{mes or ano or "completo"}.xlsx'
     return send_file(
         output,
         as_attachment=True,
-        download_name=f'financeiro_{mes}.xlsx',
+        download_name=filename,
         mimetype='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
     )
 

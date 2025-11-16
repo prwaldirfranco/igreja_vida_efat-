@@ -2,33 +2,100 @@
 {% block title %}Novo Evento{% endblock %}
 
 {% block content %}
-<div class="container py-5">
-    <h1>Novo Evento</h1>
-    <form method="POST" enctype="multipart/form-data">
-        {{ form.hidden_tag() }}
-        <div class="row">
-            <div class="col-md-8">
-                <div class="mb-3">
-                    {{ form.titulo.label(class="form-label") }}
-                    {{ form.titulo(class="form-control") }}
+<style>
+    body { 
+        background: linear-gradient(to bottom, #e0f7fa, #ffffff); 
+        font-family: 'Roboto', sans-serif; 
+        color: #333; 
+    }
+    .page-header { 
+        background: #2196F3; 
+        color: white; 
+        padding: 30px 0; 
+        text-align: center; 
+        border-radius: 0 0 20px 20px; 
+        box-shadow: 0 4px 10px rgba(0,0,0,0.1); 
+    }
+    .page-header h1 { 
+        font-weight: 700; 
+        margin-bottom: 0; 
+    }
+    .form-card { 
+        background: white; 
+        border-radius: 15px; 
+        padding: 30px; 
+        box-shadow: 0 4px 15px rgba(0,0,0,0.1); 
+        margin-top: 20px; 
+    }
+    .form-label { 
+        font-weight: 500; 
+        color: #1976D2; 
+    }
+    .form-control { 
+        border-radius: 10px; 
+        border: 1px solid #ddd; 
+        transition: border-color 0.3s; 
+    }
+    .form-control:focus { 
+        border-color: #2196F3; 
+        box-shadow: 0 0 0 0.2rem rgba(33, 150, 243, 0.25); 
+    }
+    .btn-success { 
+        background: linear-gradient(135deg, #4CAF50, #66BB6A); 
+        border: none; 
+        border-radius: 10px; 
+        padding: 10px 20px; 
+        transition: background 0.3s, transform 0.3s; 
+    }
+    .btn-success:hover { 
+        background: linear-gradient(135deg, #388E3C, #4CAF50); 
+        transform: translateY(-3px); 
+    }
+    .fade-in { 
+        animation: fadeIn 1.5s ease-in; 
+    }
+    @keyframes fadeIn { 
+        from { opacity: 0; transform: translateY(20px); } 
+        to { opacity: 1; transform: translateY(0); } 
+    }
+</style>
+<div class="page-header fade-in">
+    <h1>Novo Evento ✨</h1>
+</div>
+
+<div class="container py-5 fade-in">
+    <div class="form-card">
+        <form method="POST" enctype="multipart/form-data">
+            {{ form.hidden_tag() }}
+            <div class="row g-4">
+                <div class="col-md-8">
+                    <div class="mb-3">
+                        {{ form.titulo.label(class="form-label") }}
+                        {{ form.titulo(class="form-control") }}
+                    </div>
+                    <div class="mb-3">
+                        {{ form.descricao.label(class="form-label") }}
+                        {{ form.descricao(class="form-control", rows=5) }}
+                    </div>
+                    <div class="mb-3">
+                        {{ form.data.label(class="form-label") }}
+                        {{ form.data(class="form-control") }}
+                    </div>
                 </div>
-                <div class="mb-3">
-                    {{ form.descricao.label(class="form-label") }}
-                    {{ form.descricao(class="form-control", rows=4) }}
-                </div>
-                <div class="mb-3">
-                    {{ form.data.label(class="form-label") }}
-                    {{ form.data(class="form-control") }}
+                <div class="col-md-4">
+                    <div class="mb-3">
+                        {{ form.imagem.label(class="form-label") }}
+                        {{ form.imagem(class="form-control") }}
+                        <small class="text-muted">Selecione uma imagem para o evento (opcional).</small>
+                    </div>
                 </div>
             </div>
-            <div class="col-md-4">
-                <div class="mb-3">
-                    {{ form.imagem.label(class="form-label") }}
-                    {{ form.imagem(class="form-control") }}
-                </div>
+            <div class="text-center mt-4">
+                <button type="submit" class="btn btn-success">
+                    <i class="fas fa-save me-2"></i>Salvar Evento
+                </button>
             </div>
-        </div>
-        <button type="submit" class="btn btn-success">Salvar Evento</button>
-    </form>
+        </form>
+    </div>
 </div>
 {% endblock %}

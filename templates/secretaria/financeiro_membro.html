@@ -1,33 +1,215 @@
 {% extends "includes/_layout.html" %}
-
 {% block title %}Meu Financeiro{% endblock %}
-
 {% block content %}
-<h2>Minhas Transações - {{ mes_atual }}</h2>
-<p>Total Entradas: R$ {{ total_entradas }}</p>
-<p>Total Saídas: R$ {{ total_saidas }}</p>
-<p>Saldo: R$ {{ saldo_final }}</p>
+<style>
+    body { 
+        background: linear-gradient(to bottom, #e0f7fa, #ffffff); 
+        font-family: 'Roboto', sans-serif; 
+        color: #333; 
+    }
+    .page-header { 
+        background: #2196F3; 
+        color: white; 
+        padding: 30px 0; 
+        text-align: center; 
+        border-radius: 0 0 20px 20px; 
+        box-shadow: 0 4px 10px rgba(0,0,0,0.1); 
+    }
+    .page-header h2 { 
+        font-weight: 700; 
+        margin-bottom: 0; 
+    }
+    .stat-card { 
+        border: none; 
+        border-radius: 15px; 
+        overflow: hidden; 
+        transition: transform 0.3s, box-shadow 0.3s; 
+        cursor: pointer; 
+    }
+    .stat-card:hover { 
+        transform: translateY(-5px); 
+        box-shadow: 0 15px 25px rgba(0,0,0,0.15); 
+    }
+    .stat-card .card-body { 
+        text-align: center; 
+        padding: 20px; 
+    }
+    .stat-card h5 { 
+        font-size: 1.1em; 
+        margin-bottom: 10px; 
+    }
+    .stat-card h2 { 
+        font-weight: bold; 
+    }
+    .section-title { 
+        font-weight: 600; 
+        margin: 30px 0 15px; 
+        color: #1976D2; 
+        border-bottom: 2px solid #2196F3; 
+        padding-bottom: 10px; 
+    }
+    .table { 
+        background: white; 
+        border-radius: 15px; 
+        overflow: hidden; 
+        box-shadow: 0 4px 15px rgba(0,0,0,0.1); 
+    }
+    .table th { 
+        background: #f5f5f5; 
+        font-weight: 600; 
+    }
+    .table td { 
+        vertical-align: middle; 
+    }
+    .table-hover tr:hover { 
+        background: #f0f4f8; 
+    }
+    .fade-in { 
+        animation: fadeIn 1.5s ease-in; 
+    }
+    @keyframes fadeIn { 
+        from { opacity: 0; transform: translateY(20px); } 
+        to { opacity: 1; transform: translateY(0); } 
+    }
+    #financeChart { 
+        max-height: 300px; 
+    }
+</style>
+<div class="page-header fade-in">
+    <h2>Meu Financeiro - {{ mes_atual }} ✨</h2>
+</div>
 
-<table class="table table-striped">
-    <thead>
-        <tr>
-            <th>Data</th>
-            <th>Tipo</th>
-            <th>Categoria</th>
-            <th>Valor</th>
-            <th>Método</th>
-        </tr>
-    </thead>
-    <tbody>
-        {% for t in transacoes %}
-        <tr>
-            <td>{{ t.data.strftime('%d/%m/%Y') }}</td>
-            <td>{{ t.tipo }}</td>
-            <td>{{ t.categoria }}</td>
-            <td>{{ t.valor }}</td>
-            <td>{{ t.metodo }}</td>
-        </tr>
-        {% endfor %}
-    </tbody>
-</table>
+<div class="container py-4 fade-in">
+    <!-- Estatísticas em cards interativos -->
+    <div class="section-title">Resumo Financeiro</div>
+    <div class="row mb-4">
+        <div class="col-md-4 mb-3">
+            <div class="card stat-card bg-success text-white">
+                <div class="card-body">
+                    <h5>Total Entradas</h5>
+                    <h2 id="entradas-count">R$ {{ "%.2f"|format(total_entradas) }}</h2>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-4 mb-3">
+            <div class="card stat-card bg-danger text-white">
+                <div class="card-body">
+                    <h5>Total Saídas</h5>
+                    <h2 id="saidas-count">R$ {{ "%.2f"|format(total_saidas) }}</h2>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-4 mb-3">
+            <div class="card stat-card bg-info text-white">
+                <div class="card-body">
+                    <h5>Saldo Final</h5>
+                    <h2 id="saldo-count">R$ {{ "%.2f"|format(saldo_final) }}</h2>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <!-- Gráfico de Saldo (se disponível) -->
+    {% if meses_grafico and saldos_grafico %}
+    <div class="section-title">Gráfico de Saldos</div>
+    <div class="card mb-4">
+        <div class="card-body">
+            <canvas id="financeChart"></canvas>
+        </div>
+    </div>
+    {% endif %}
+    
+    <!-- Tabela de Transações -->
+    <div class="section-title">Minhas Transações</div>
+    <div class="table-responsive">
+        <table class="table table-hover mb-0 align-middle">
+            <thead class="table-light">
+                <tr>
+                    <th>Data</th>
+                    <th>Tipo</th>
+                    <th>Categoria</th>
+                    <th>Valor</th>
+                    <th>Método</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for t in transacoes %}
+                <tr>
+                    <td>{{ t.data.strftime('%d/%m/%Y') }}</td>
+                    <td>
+                        <span class="badge 
+                            {% if t.tipo in ['dizimo', 'oferta', 'doacao'] %}bg-success
+                            {% elif t.tipo == 'despesa' %}bg-danger
+                            {% else %}bg-secondary{% endif %}">
+                            {{ t.tipo|title }}
+                        </span>
+                    </td>
+                    <td>{{ t.categoria|title }}</td>
+                    <td>R$ {{ "%.2f"|format(t.valor) }}</td>
+                    <td>{{ t.metodo|title }}</td>
+                </tr>
+                {% else %}
+                <tr>
+                    <td colspan="5" class="text-center text-muted py-5">
+                        <i class="fas fa-chart-line fs-1 mb-3 d-block"></i>
+                        Nenhuma transação encontrada.
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+
+    <div class="text-center mt-4">
+        <a href="{{ url_for('secretaria') }}" class="action-btn" style="background: linear-gradient(135deg, #2196F3, #42A5F5);">
+            <i class="fas fa-arrow-left me-2"></i>Voltar ao Dashboard
+        </a>
+    </div>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<script>
+    // Animação de contadores
+    function animateCount(id, end) {
+        let count = 0;
+        const duration = 2000;
+        const step = end / (duration / 20);
+        const interval = setInterval(() => {
+            count += step;
+            if (count >= end) { count = end; clearInterval(interval); }
+            document.getElementById(id).innerText = 'R$ ' + count.toFixed(2);
+        }, 20);
+    }
+    animateCount('entradas-count', {{ total_entradas }});
+    animateCount('saidas-count', {{ total_saidas }});
+    animateCount('saldo-count', {{ saldo_final }});
+
+    // Gráfico de Saldos (usando Chart.js)
+    {% if meses_grafico and saldos_grafico %}
+    const ctx = document.getElementById('financeChart').getContext('2d');
+    const financeChart = new Chart(ctx, {
+        type: 'line',
+        data: {
+            labels: {{ meses_grafico | tojson }},
+            datasets: [{
+                label: 'Saldo Mensal',
+                data: {{ saldos_grafico | tojson }},
+                borderColor: '#2196F3',
+                backgroundColor: 'rgba(33, 150, 243, 0.2)',
+                fill: true,
+                tension: 0.4
+            }]
+        },
+        options: {
+            responsive: true,
+            scales: {
+                y: {
+                    beginAtZero: true,
+                    title: { display: true, text: 'Saldo (R$)' }
+                }
+            }
+        }
+    });
+    {% endif %}
+</script>
 {% endblock %}

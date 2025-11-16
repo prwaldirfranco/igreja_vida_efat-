@@ -26,6 +26,54 @@
         <input type="month" name="mes" value="{{ mes }}" class="form-control form-control-sm" style="width: 160px;">
         <button type="submit" class="btn btn-outline-primary btn-sm">Filtrar</button>
       </form>
+      <div class="dropdown">
+        <button class="btn btn-outline-secondary btn-sm dropdown-toggle" type="button" data-bs-toggle="dropdown" aria-expanded="false">
+          <i class="bi bi-download"></i> Exportar
+        </button>
+        <ul class="dropdown-menu">
+          <li><a class="dropdown-item small" href="{{ url_for('exportar_pdf', mes=mes) }}">PDF (Mês Completo)</a></li>
+          <li><a class="dropdown-item small" href="{{ url_for('exportar_pdf', ano=mes.split('-')[0]) }}">PDF (Ano Completo)</a></li>
+          
+          <!-- Nova opção: Exportar por Tipo -->
+          <li><a class="dropdown-item small" href="#" data-bs-toggle="modal" data-bs-target="#modalTipo">PDF (Por Tipo)</a></li>
+          
+          {% if is_membro %}
+          <li><a class="dropdown-item small" href="{{ url_for('exportar_pdf', membro_id=current_user.membro.id) }}">PDF (Por Membro)</a></li>
+          {% endif %}
+          
+          <li><hr class="dropdown-divider"></li>
+          
+          <li><a class="dropdown-item small" href="{{ url_for('exportar_excel', mes=mes) }}">Excel (Mês Completo)</a></li>
+          <li><a class="dropdown-item small" href="{{ url_for('exportar_excel', ano=mes.split('-')[0]) }}">Excel (Ano Completo)</a></li>
+          
+          <!-- Nova opção: Exportar por Tipo Excel -->
+          <li><a class="dropdown-item small" href="#" data-bs-toggle="modal" data-bs-target="#modalTipoExcel">Excel (Por Tipo)</a></li>
+          
+          {% if is_membro %}
+          <li><a class="dropdown-item small" href="{{ url_for('exportar_excel', membro_id=current_user.membro.id) }}">Excel (Por Membro)</a></li>
+          {% endif %}
+        </ul>
+      </div>
+      {% if current_user.nivel_acesso <= 3 %}
+      <form method="GET" action="{{ url_for('exportar_pdf') }}" class="d-flex gap-2">
+        <select name="membro_id" class="form-select form-select-sm" style="width: 200px;">
+          <option value="">-- Selecionar Membro --</option>
+          {% for m in membros %}
+          <option value="{{ m.id }}">{{ m.nome }}</option>
+          {% endfor %}
+        </select>
+        <button type="submit" class="btn btn-outline-info btn-sm">Exportar por Membro (PDF)</button>
+      </form>
+      <form method="GET" action="{{ url_for('exportar_excel') }}" class="d-flex gap-2">
+        <select name="membro_id" class="form-select form-select-sm" style="width: 200px;">
+          <option value="">-- Selecionar Membro --</option>
+          {% for m in membros %}
+          <option value="{{ m.id }}">{{ m.nome }}</option>
+          {% endfor %}
+        </select>
+        <button type="submit" class="btn btn-outline-info btn-sm">Exportar por Membro (Excel)</button>
+      </form>
+      {% endif %}
     </div>
   </div>
 
@@ -81,7 +129,7 @@
           <small class="opacity-75">- Provisão Extras</small>
         </div>
       </div>
-    </div>>
+    </div>
 
     <!-- Provisão Extras -->
     <div class="col-6 col-md-3">
@@ -94,18 +142,19 @@
     </div>
 
     <!-- Dizimistas Necessários -->
-<div class="col-6 col-md-3">
-  <div class="card border-0 shadow-sm h-100 text-white" style="background: linear-gradient(135deg, #fd7e14, #f39c12);">
-    <div class="card-body p-3">
-      <h6 class="mb-1 opacity-75 small">Dizimistas Necessários</h6>
-      <h3 class="mb-0 fw-bold">{{ dizimistas_necessarios }}</h3>
-      <small class="opacity-75">
-        para cobrir R$ {{ "%.2f"|format(despesa_total) }}<br>
-        (10% de R$ {{ "%.2f"|format(salario_medio) }} = R$ {{ "%.2f"|format(dizimo_medio) }} cada)
-      </small>
+    <div class="col-6 col-md-3">
+      <div class="card border-0 shadow-sm h-100 text-white" style="background: linear-gradient(135deg, #fd7e14, #f39c12);">
+        <div class="card-body p-3">
+          <h6 class="mb-1 opacity-75 small">Dizimistas Necessários</h6>
+          <h3 class="mb-0 fw-bold">{{ dizimistas_necessarios }}</h3>
+          <small class="opacity-75">
+            para cobrir R$ {{ "%.2f"|format(despesa_total) }}<br>
+            (10% de R$ {{ "%.2f"|format(salario_medio) }} = R$ {{ "%.2f"|format(dizimo_medio) }} cada)
+          </small>
+        </div>
+      </div>
     </div>
   </div>
-</div>
 
   <!-- Formulário + Gráfico -->
   <div class="row g-4">
@@ -245,13 +294,13 @@
                       <p><strong>{{ t.categoria }}</strong></p>
                       <p class="text-muted small">
                         {{ t.tipo|title }} • R$ {{ "%.2f"|format(t.valor) }} • {{ t.data.strftime('%d/%m/%Y') }}
-                      </div>
-                      <div class="modal-footer justify-content-center">
-                        <form method="POST" action="{{ url_for('excluir_transacao', id=t.id, mes=mes) }}">
-                          <button type="submit" class="btn btn-danger btn-sm">Excluir</button>
-                        </form>
-                        <button type="button" class="btn btn-secondary btn-sm" data-bs-dismiss="modal">Cancelar</button>
-                      </div>
+                      </p>
+                    </div>
+                    <div class="modal-footer justify-content-center">
+                      <form method="POST" action="{{ url_for('excluir_transacao', id=t.id, mes=mes) }}">
+                        <button type="submit" class="btn btn-danger btn-sm">Excluir</button>
+                      </form>
+                      <button type="button" class="btn btn-secondary btn-sm" data-bs-dismiss="modal">Cancelar</button>
                     </div>
                   </div>
                 </div>
@@ -336,6 +385,98 @@
 
 </div>
 
+<!-- Modal para Exportar PDF por Tipo -->
+<div class="modal fade" id="modalTipo" tabindex="-1">
+  <div class="modal-dialog modal-sm">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h6 class="modal-title">Exportar PDF por Tipo</h6>
+        <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+      </div>
+      <div class="modal-body">
+        <form method="GET" action="{{ url_for('exportar_pdf') }}" id="formTipoPdf">
+          <div class="mb-3">
+            <label class="form-label small">Tipo:</label>
+            <select name="tipo" class="form-select form-select-sm" required>
+              <option value="">-- Selecione o tipo --</option>
+              <option value="dizimo">Dízimos (com nomes)</option>
+              <option value="oferta">Ofertas</option>
+              <option value="doacao">Doações</option>
+              <option value="despesa">Saídas/Despesas</option>
+            </select>
+          </div>
+          <div class="mb-3">
+            <label class="form-label small">Período:</label>
+            <div class="form-check">
+              <input class="form-check-input" type="radio" name="periodo_tipo" id="mesTipo" value="mes" checked>
+              <label class="form-check-label small" for="mesTipo">Mês específico</label>
+            </div>
+            <div class="form-check">
+              <input class="form-check-input" type="radio" name="periodo_tipo" id="anoTipo" value="ano">
+              <label class="form-check-label small" for="anoTipo">Ano completo</label>
+            </div>
+          </div>
+          <div class="mb-3" id="mesTipoContainer">
+            <label class="form-label small">Mês:</label>
+            <input type="month" name="mes" value="{{ mes }}" class="form-control form-control-sm">
+          </div>
+          <div class="mb-3" id="anoTipoContainer" style="display: none;">
+            <label class="form-label small">Ano:</label>
+            <input type="number" name="ano" value="{{ mes.split('-')[0] }}" class="form-control form-control-sm" min="2020" max="2030">
+          </div>
+          <button type="submit" class="btn btn-primary w-100 btn-sm">Exportar PDF</button>
+        </form>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Modal para Exportar Excel por Tipo -->
+<div class="modal fade" id="modalTipoExcel" tabindex="-1">
+  <div class="modal-dialog modal-sm">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h6 class="modal-title">Exportar Excel por Tipo</h6>
+        <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+      </div>
+      <div class="modal-body">
+        <form method="GET" action="{{ url_for('exportar_excel') }}" id="formTipoExcel">
+          <div class="mb-3">
+            <label class="form-label small">Tipo:</label>
+            <select name="tipo" class="form-select form-select-sm" required>
+              <option value="">-- Selecione o tipo --</option>
+              <option value="dizimo">Dízimos (com nomes)</option>
+              <option value="oferta">Ofertas</option>
+              <option value="doacao">Doações</option>
+              <option value="despesa">Saídas/Despesas</option>
+            </select>
+          </div>
+          <div class="mb-3">
+            <label class="form-label small">Período:</label>
+            <div class="form-check">
+              <input class="form-check-input" type="radio" name="periodo_tipo_excel" id="mesTipoExcel" value="mes" checked>
+              <label class="form-check-label small" for="mesTipoExcel">Mês específico</label>
+            </div>
+            <div class="form-check">
+              <input class="form-check-input" type="radio" name="periodo_tipo_excel" id="anoTipoExcel" value="ano">
+              <label class="form-check-label small" for="anoTipoExcel">Ano completo</label>
+            </div>
+          </div>
+          <div class="mb-3" id="mesTipoExcelContainer">
+            <label class="form-label small">Mês:</label>
+            <input type="month" name="mes" value="{{ mes }}" class="form-control form-control-sm">
+          </div>
+          <div class="mb-3" id="anoTipoExcelContainer" style="display: none;">
+            <label class="form-label small">Ano:</label>
+            <input type="number" name="ano" value="{{ mes.split('-')[0] }}" class="form-control form-control-sm" min="2020" max="2030">
+          </div>
+          <button type="submit" class="btn btn-success w-100 btn-sm">Exportar Excel</button>
+        </form>
+      </div>
+    </div>
+  </div>
+</div>
+
 <!-- Chart.js + Edição Inline -->
 <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 <script>
@@ -373,6 +514,51 @@
         }
       }
     });
+
+    // Controle dos campos de período para exportação por tipo
+    // Para PDF
+    const mesTipoRadio = document.getElementById('mesTipo');
+    const anoTipoRadio = document.getElementById('anoTipo');
+    const mesTipoContainer = document.getElementById('mesTipoContainer');
+    const anoTipoContainer = document.getElementById('anoTipoContainer');
+    
+    if (mesTipoRadio && anoTipoRadio) {
+      mesTipoRadio.addEventListener('change', function() {
+        if (this.checked) {
+          mesTipoContainer.style.display = 'block';
+          anoTipoContainer.style.display = 'none';
+        }
+      });
+      
+      anoTipoRadio.addEventListener('change', function() {
+        if (this.checked) {
+          mesTipoContainer.style.display = 'none';
+          anoTipoContainer.style.display = 'block';
+        }
+      });
+    }
+    
+    // Para Excel
+    const mesTipoExcelRadio = document.getElementById('mesTipoExcel');
+    const anoTipoExcelRadio = document.getElementById('anoTipoExcel');
+    const mesTipoExcelContainer = document.getElementById('mesTipoExcelContainer');
+    const anoTipoExcelContainer = document.getElementById('anoTipoExcelContainer');
+    
+    if (mesTipoExcelRadio && anoTipoExcelRadio) {
+      mesTipoExcelRadio.addEventListener('change', function() {
+        if (this.checked) {
+          mesTipoExcelContainer.style.display = 'block';
+          anoTipoExcelContainer.style.display = 'none';
+        }
+      });
+      
+      anoTipoExcelRadio.addEventListener('change', function() {
+        if (this.checked) {
+          mesTipoExcelContainer.style.display = 'none';
+          anoTipoExcelContainer.style.display = 'block';
+        }
+      });
+    }
   });
 
   // === EDIÇÃO INLINE COM PROMPT ===
