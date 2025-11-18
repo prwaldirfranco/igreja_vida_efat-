@@ -2,34 +2,93 @@
 {% block title %}Contato{% endblock %}
 
 {% block content %}
+
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.10.5/font/bootstrap-icons.css">
+
 <div class="container py-5">
-    <h1 class="text-center mb-5">Fale Conosco</h1>
-    <div class="row">
-        <div class="col-md-6">
-            <form>
-                <div class="mb-3">
-                    <label class="form-label">Nome</label>
-                    <input type="text" class="form-control" required>
+
+    <h1 class="text-center mb-4 fw-bold">Fale Conosco</h1>
+    <p class="text-center text-muted mb-5">
+        Estamos aqui para servir você. Entre em contato conosco pelo formulário ou através dos nossos canais.
+    </p>
+
+    <div class="row g-4">
+
+        <!-- FORMULÁRIO -->
+        <div class="col-lg-6">
+            <div class="card shadow-sm border-0">
+                <div class="card-body p-4">
+                    <h4 class="mb-3"><i class="bi bi-envelope-paper-fill text-primary"></i> Envie uma Mensagem</h4>
+
+                    <form method="POST" action="{{ url_for('contato') }}">
+                        <div class="mb-3">
+                            <label class="form-label">Nome</label>
+                            <input type="text" name="nome" class="form-control" required>
+                        </div>
+                        <div class="mb-3">
+                            <label class="form-label">Email</label>
+                            <input type="email" name="email" class="form-control" required>
+                        </div>
+                        <div class="mb-3">
+                            <label class="form-label">Mensagem</label>
+                            <textarea name="mensagem" class="form-control" rows="5" required></textarea>
+                        </div>
+
+                        <button type="submit" class="btn btn-primary w-100 py-2">
+                            <i class="bi bi-send-fill"></i> Enviar
+                        </button>
+                    </form>
                 </div>
-                <div class="mb-3">
-                    <label class="form-label">Email</label>
-                    <input type="email" class="form-control" required>
-                </div>
-                <div class="mb-3">
-                    <label class="form-label">Mensagem</label>
-                    <textarea class="form-control" rows="5" required></textarea>
-                </div>
-                <button type="submit" class="btn btn-primary">Enviar</button>
-            </form>
+            </div>
         </div>
-        <div class="col-md-6">
-            <h3>Endereço</h3>
-            <p>Rua Exemplo, 123 - Centro<br>São Paulo, SP</p>
-            <h3>Telefone</h3>
-            <p>(11) 99999-9999</p>
-            <h3>Email</h3>
-            <p>contato@vidaefata.com.br</p>
+
+        <!-- INFORMAÇÕES -->
+        <div class="col-lg-6">
+
+            <div class="card shadow-sm border-0 mb-4">
+                <div class="card-body p-4">
+                    <h4 class="mb-3"><i class="bi bi-geo-alt-fill text-danger"></i> Endereço</h4>
+                    <p class="mb-0">
+                        Comunidade Batista Vida Efatá<br>
+                        Rua Silas Fontes Caetano, 81 – Ubas<br>
+                        Carapebus – RJ
+                    </p>
+                </div>
+            </div>
+
+            <div class="card shadow-sm border-0 mb-4">
+                <div class="card-body p-4">
+                    <h4 class="mb-3"><i class="bi bi-telephone-fill text-success"></i> Telefone</h4>
+                    <p class="fs-5 mb-2">
+                        <a href="https://wa.me/5522992394905" class="text-decoration-none">
+                            <i class="bi bi-whatsapp text-success"></i> (22) 99239-4905
+                        </a>
+                    </p>
+                </div>
+            </div>
+
+            <div class="card shadow-sm border-0 mb-4">
+                <div class="card-body p-4">
+                    <h4 class="mb-3"><i class="bi bi-envelope-at-fill text-primary"></i> Email</h4>
+                    <p class="mb-0">combave@gmail.com</p>
+                </div>
+            </div>
+
+            <div class="card shadow-sm border-0">
+                <div class="card-body p-4">
+                    <h4 class="mb-3"><i class="bi bi-instagram text-danger"></i> Redes Sociais</h4>
+                    <p class="mb-0">
+                        Instagram: 
+                        <a href="https://instagram.com/combave.carapebus.ofc" target="_blank">
+                            @combave.carapebus.ofc
+                        </a>
+                    </p>
+                </div>
+            </div>
+
         </div>
+
     </div>
 </div>
+
 {% endblock %}

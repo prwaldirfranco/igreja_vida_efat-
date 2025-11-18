@@ -1,0 +1,95 @@
+{% extends "base.html" %}  <!-- ou base.html se você não tiver um público -->
+{% block title %}Assistente Virtual - Comunidade Batista Vida Efatá{% endblock %}
+
+{% block content %}
+<div class="container py-5">
+    <div class="row justify-content-center">
+        <div class="col-12 col-lg-8">
+            <div class="text-center mb-5">
+                <img src="{{ url_for('static', filename='img/logo.png') }}" alt="Vida Efatá" height="80" class="mb-3">
+                <h2 class="text-primary">Assistente Virtual</h2>
+                <p class="lead text-muted">
+                    Olá! Sou o assistente da <strong>Comunidade Batista Vida Efatá</strong> em Carapebus/RJ.<br>
+                    Pergunte sobre cultos, horários, endereço, pastor, eventos ou qualquer coisa da igreja!
+                </p>
+            </div>
+
+            <div class="card shadow-lg border-0">
+                <div class="card-header bg-primary text-white text-center">
+                    <h5 class="mb-0"><i class="bi bi-robot"></i> Converse comigo</h5>
+                </div>
+                <div class="card-body p-0">
+                    <div id="chat" class="p-4" style="height: 60vh; overflow-y: auto; background: #f8f9fa; min-height: 400px;">
+                        <!-- Mensagens aparecem aqui -->
+                    </div>
+                    <div class="card-footer bg-white p-3">
+                        <div class="input-group">
+                            <input type="text" id="pergunta" class="form-control form-control-lg border-0 shadow-sm"
+                                   placeholder="Escreva sua pergunta..." autocomplete="off">
+                            <button class="btn btn-primary btn-lg" onclick="enviar()">
+                                <i class="bi bi-send-fill"></i>
+                            </button>
+                        </div>
+                        <small class="text-muted d-block text-center mt-2">
+                            Pressione Enter para enviar
+                        </small>
+                    </div>
+                </div>
+            </div>
+
+            <div class="text-center mt-4">
+                <small class="text-muted">
+                    Comunidade Batista Vida Efatá • Rua Silas Fontes Caetano, 91 • Carapebus/RJ
+                </small>
+            </div>
+        </div>
+    </div>
+</div>
+
+<style>
+    .msg-voce { background:#007bff; color:white; padding:12px 18px; border-radius:20px 20px 0 20px; max-width:80%; margin-left:auto; margin-bottom:15px; float:right; clear:both; }
+    .msg-ia   { background:#e9ecef; color:#212529; padding:12px 18px; border-radius:20px 20px 20px 0; max-width:80%; margin-right:auto; margin-bottom:15px; float:left; clear:both; }
+    .msg-container::after { content:""; clear:both; display:table; }
+    #chat { scroll-behavior: smooth; }
+</style>
+
+<script>
+    function adicionar(quem, texto) {
+        const chat = document.getElementById('chat');
+        const div = document.createElement('div');
+        div.className = 'msg-container';
+        const msg = document.createElement('div');
+        msg.className = quem === 'Você' ? 'msg-voce' : 'msg-ia';
+        msg.innerHTML = `<strong>${quem}:</strong><br>${texto.replace(/\n/g, '<br>')}`;
+        div.appendChild(msg);
+        chat.appendChild(div);
+        chat.scrollTop = chat.scrollHeight;
+    }
+
+    function enviar() {
+        let input = document.getElementById('pergunta');
+        let texto = input.value.trim();
+        if (!texto) return;
+        adicionar('Você', texto);
+        input.value = '';
+
+        fetch('/assistente/pergunta', {
+            method: 'POST',
+            headers: {'Content-Type': 'application/json'},
+            body: JSON.stringify({pergunta: texto})
+        })
+        .then(r => r.json())
+        .then(d => adicionar('IA', d.resposta))
+        .catch(() => adicionar('IA', 'Ops! Tive uma pequena falha. Tente novamente em alguns segundos.'));
+    }
+
+    document.getElementById('pergunta').addEventListener('keypress', e => {
+        if (e.key === 'Enter') enviar();
+    });
+
+    // Saudação inicial
+    window.onload = () => {
+        adicionar('IA', 'A paz do Senhor, amado(a)!\n\nBem-vindo(a) à Comunidade Batista Vida Efatá!\nEm que posso te ajudar hoje?');
+    };
+</script>
+{% endblock %}

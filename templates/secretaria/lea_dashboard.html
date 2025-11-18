@@ -1,104 +1,104 @@
 {% extends "base.html" %}
 {% block content %}
 <style>
-    body { 
-        background: linear-gradient(to bottom, #e0f7fa, #ffffff); 
-        font-family: 'Roboto', sans-serif; 
-        color: #333; 
+    body {
+        background: linear-gradient(to bottom, #e0f7fa, #ffffff);
+        font-family: 'Roboto', sans-serif;
+        color: #333;
     }
-    .dashboard-header { 
-        background: #2196F3; 
-        color: white; 
-        padding: 40px 0; 
-        text-align: center; 
-        border-radius: 0 0 20px 20px; 
-        box-shadow: 0 4px 10px rgba(0,0,0,0.1); 
+    .dashboard-header {
+        background: #2196F3;
+        color: white;
+        padding: 40px 0;
+        text-align: center;
+        border-radius: 0 0 20px 20px;
+        box-shadow: 0 4px 10px rgba(0,0,0,0.1);
     }
-    .dashboard-header h1 { 
-        font-weight: 700; 
-        margin-bottom: 10px; 
+    .dashboard-header h1 { font-weight: 700; margin-bottom: 10px; }
+    .dashboard-header p { font-style: italic; font-size: 1.2em; }
+
+    .stat-card {
+        border: none; border-radius: 15px; overflow: hidden;
+        transition: transform 0.3s, box-shadow 0.3s; cursor: pointer;
     }
-    .dashboard-header p { 
-        font-style: italic; 
-        font-size: 1.2em; 
+    .stat-card:hover {
+        transform: translateY(-5px);
+        box-shadow: 0 15px 25px rgba(0,0,0,0.15);
     }
-    .stat-card { 
-        border: none; 
-        border-radius: 15px; 
-        overflow: hidden; 
-        transition: transform 0.3s, box-shadow 0.3s; 
-        cursor: pointer; 
+    .stat-card .card-body { text-align: center; padding: 20px; }
+    .stat-card h5 { font-size: 1.1em; margin-bottom: 10px; }
+    .stat-card h2 { font-weight: bold; }
+
+    .quick-link {
+        position: relative;
+        display: block;
+        background: linear-gradient(135deg, #4CAF50, #66BB6A);
+        color: white;
+        padding: 20px;
+        text-align: center;
+        border-radius: 15px;
+        margin: 10px 0;
+        transition: all 0.3s;
+        text-decoration: none;
+        overflow: hidden;
     }
-    .stat-card:hover { 
-        transform: translateY(-5px); 
-        box-shadow: 0 15px 25px rgba(0,0,0,0.15); 
+    .quick-link:hover {
+        transform: translateY(-3px);
+        background: linear-gradient(135deg, #388E3C, #4CAF50);
     }
-    .stat-card .card-body { 
-        text-align: center; 
-        padding: 20px; 
+    .quick-link i {
+        font-size: 2.5em;
+        margin-bottom: 10px;
+        display: block;
     }
-    .stat-card h5 { 
-        font-size: 1.1em; 
-        margin-bottom: 10px; 
+    .quick-link h4 {
+        font-size: 1.2em;
+        margin: 5px 0;
     }
-    .stat-card h2 { 
-        font-weight: bold; 
+    .quick-link small {
+        font-size: 0.9em;
+        opacity: 0.9;
     }
-    .quick-link { 
-        display: block; 
-        background: linear-gradient(135deg, #4CAF50, #66BB6A); 
-        color: white; 
-        padding: 20px; 
-        text-align: center; 
-        border-radius: 15px; 
-        margin: 10px 0; 
-        transition: background 0.3s, transform 0.3s; 
-        text-decoration: none; 
+
+    .badge-novo {
+        animation: pulse 2s infinite;
     }
-    .quick-link:hover { 
-        background: linear-gradient(135deg, #388E3C, #4CAF50); 
-        transform: translateY(-3px); 
+    @keyframes pulse {
+        0% { transform: scale(1); }
+        50% { transform: scale(1.1); }
+        100% { transform: scale(1); }
     }
-    .quick-link i { 
-        font-size: 2.5em; 
-        margin-bottom: 10px; 
-        display: block; 
+
+    .section-title {
+        font-weight: 600;
+        margin: 30px 0 15px;
+        color: #1976D2;
+        border-bottom: 2px solid #2196F3;
+        padding-bottom: 10px;
     }
-    .quick-link h4 { 
-        font-size: 1.2em; 
-        margin: 0; 
+    .list-group-item {
+        border-radius: 10px;
+        margin-bottom: 10px;
+        box-shadow: 0 2px 5px rgba(0,0,0,0.05);
+        transition: background 0.3s;
     }
-    .section-title { 
-        font-weight: 600; 
-        margin: 30px 0 15px; 
-        color: #1976D2; 
-        border-bottom: 2px solid #2196F3; 
-        padding-bottom: 10px; 
-    }
-    .list-group-item { 
-        border-radius: 10px; 
-        margin-bottom: 10px; 
-        box-shadow: 0 2px 5px rgba(0,0,0,0.05); 
-        transition: background 0.3s; 
-    }
-    .list-group-item:hover { 
-        background: #f5f5f5; 
-    }
-    .fade-in { 
-        animation: fadeIn 1.5s ease-in; 
-    }
-    @keyframes fadeIn { 
-        from { opacity: 0; transform: translateY(20px); } 
-        to { opacity: 1; transform: translateY(0); } 
+    .list-group-item:hover { background: #f5f5f5; }
+
+    .fade-in { animation: fadeIn 1.5s ease-in; }
+    @keyframes fadeIn {
+        from { opacity: 0; transform: translateY(20px); }
+        to { opacity: 1; transform: translateY(0); }
     }
 </style>
+
 <div class="dashboard-header fade-in">
-    <h1>Bem-vinda, Lea! Seu Dashboard Personalizado ✨</h1>
+    <h1>Bem-vinda, Secretária! Seu Dashboard Personalizado</h1>
     <p>Aqui você gerencia tudo com facilidade e inspiração. Vamos impactar vidas juntos!</p>
 </div>
 
 <div class="container mt-4 fade-in">
-    <!-- Estatísticas em cards interativos -->
+
+    <!-- Estatísticas Rápidas -->
     <div class="section-title">Estatísticas Rápidas</div>
     <div class="row mb-4">
         <div class="col-md-3 mb-3">
@@ -135,7 +135,7 @@
         </div>
         {% if mensagens_enviadas > 0 %}
         <div class="col-md-3 mb-3">
-            <div class="card stat-card bg-purple text-white" style="background: #9C27B0;">
+            <div class="card stat-card text-white" style="background: #9C27B0;">
                 <div class="card-body">
                     <h5>Mensagens Enviadas</h5>
                     <h2 id="mensagens-count">{{ mensagens_enviadas }}</h2>
@@ -144,10 +144,33 @@
         </div>
         {% endif %}
     </div>
-    
-    <!-- Acesso rápido com ícones e hover -->
+
+    <!-- Acesso Rápido (com os novos botões da IA no topo!) -->
     <div class="section-title">Acesso Rápido</div>
     <div class="row mb-4">
+
+        <!-- NOVO: Assistente IA com selo "NOVO" piscando -->
+        <div class="col-md-3 mb-3">
+            <a href="{{ url_for('ia_chat') }}" class="quick-link position-relative" style="background: linear-gradient(135deg, #9C27B0, #AB47BC);">
+                <i class="fas fa-robot"></i>
+                <h4>Assistente IA</h4>
+                <small>Pergunte qualquer coisa à IA da igreja</small>
+                <span class="position-absolute top-0 start-100 translate-middle badge rounded-pill bg-danger badge-novo">
+                    NOVO
+                </span>
+            </a>
+        </div>
+
+        <!-- NOVO: Membros que sentimos falta -->
+        <div class="col-md-3 mb-3">
+            <a href="{{ url_for('ia_afastados') }}" class="quick-link" style="background: linear-gradient(135deg, #E91E63, #F06292);">
+                <i class="fas fa-heart"></i>
+                <h4>Membros que Sentimos Falta</h4>
+                <small>IA gera mensagens carinhosas automáticas</small>
+            </a>
+        </div>
+
+        <!-- Botões originais -->
         <div class="col-md-3 mb-3">
             <a href="{{ url_for('listar_ministerios') }}" class="quick-link" style="background: linear-gradient(135deg, #2196F3, #42A5F5);">
                 <i class="fas fa-church"></i>
@@ -184,38 +207,45 @@
                 <h4>Financeiro</h4>
             </a>
         </div>
-        <!-- Adicione mais links se necessário, mantendo o grid responsivo -->
     </div>
-    
-    <!-- Seções interativas: Compromissos e Eventos -->
+
+    <!-- Mensagens Enviadas (fora do grid rápido) -->
+    <div class="mb-4">
+        <a href="{{ url_for('mensagens_enviadas') }}" class="list-group-item list-group-item-action">
+            <i class="bi bi-chat-text"></i> Ver Todas as Mensagens Enviadas
+        </a>
+    </div>
+
+    <!-- Compromissos e Eventos -->
     <div class="row">
         <div class="col-md-6 mb-4">
             <div class="section-title">Compromissos Próximos</div>
             <ul class="list-group">
                 {% if compromissos %}
-                {% for c in compromissos %}
-                <li class="list-group-item d-flex justify-content-between align-items-center">
-                    <span><strong>{{ c.titulo }}</strong> - {{ c.data.strftime('%d/%m/%Y') }}</span>
-                    <a href="{{ url_for('detalhes_compromisso', id=c.id) }}" class="btn btn-sm btn-outline-primary">Ver</a>
-                </li>
-                {% endfor %}
+                    {% for c in compromissos %}
+                    <li class="list-group-item d-flex justify-content-between align-items-center">
+                        <span><strong>{{ c.titulo }}</strong> - {{ c.data.strftime('%d/%m/%Y') }}</span>
+                        <a href="{{ url_for('detalhes_compromisso', id=c.id) }}" class="btn btn-sm btn-outline-primary">Ver</a>
+                    </li>
+                    {% endfor %}
                 {% else %}
-                <li class="list-group-item text-muted">Nenhum compromisso próximo.</li>
+                    <li class="list-group-item text-muted">Nenhum compromisso próximo.</li>
                 {% endif %}
             </ul>
         </div>
+
         <div class="col-md-6 mb-4">
             <div class="section-title">Eventos Recentes</div>
             <ul class="list-group">
                 {% if eventos %}
-                {% for e in eventos %}
-                <li class="list-group-item d-flex justify-content-between align-items-center">
-                    <span><strong>{{ e.titulo }}</strong> - {{ e.data.strftime('%d/%m/%Y') }}</span>
-                    <a href="{{ url_for('editar_evento', id=e.id) }}" class="btn btn-sm btn-outline-info">Editar</a>
-                </li>
-                {% endfor %}
+                    {% for e in eventos %}
+                    <li class="list-group-item d-flex justify-content-between align-items-center">
+                        <span><strong>{{ e.titulo }}</strong> - {{ e.data.strftime('%d/%m/%Y') }}</span>
+                        <a href="{{ url_for('editar_evento', id=e.id) }}" class="btn btn-sm btn-outline-info">Editar</a>
+                    </li>
+                    {% endfor %}
                 {% else %}
-                <li class="list-group-item text-muted">Nenhum evento recente.</li>
+                    <li class="list-group-item text-muted">Nenhum evento recente.</li>
                 {% endif %}
             </ul>
         </div>
@@ -223,10 +253,9 @@
 </div>
 
 <script>
-    // Animação de contadores melhorada
     function animateCount(id, end) {
         let count = 0;
-        const duration = 2000; // 2 segundos
+        const duration = 2000;
         const step = end / (duration / 20);
         const interval = setInterval(() => {
             count += step;

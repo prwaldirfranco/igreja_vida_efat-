@@ -1,0 +1,129 @@
+{% extends "base.html" %}
+{% block title %}Assistente Inteligente - Vida Efatá{% endblock %}
+
+{% block content %}
+<div class="container-fluid py-4">
+    <div class="row">
+        <div class="col-12">
+            <div class="card shadow-sm border-0">
+                <div class="card-header bg-primary text-white d-flex align-items-center">
+                    <i class="bi bi-robot me-3 fs-4"></i>
+                    <h4 class="mb-0">Assistente Inteligente da Igreja</h4>
+                </div>
+
+                <div class="card-body p-0">
+
+                    <!-- Área do Chat -->
+                    <div id="chat"
+                         class="p-3"
+                         style="height: 58vh; overflow-y: auto; background: #f8f9fa; min-height: 350px;">
+                        <div class="text-center text-muted mb-4">
+                            <i class="bi bi-robot fs-1"></i><br>
+                            <small>
+                                Olá! Sou o assistente virtual da <strong>Comunidade Batista Vida Efatá</strong>.<br>
+                                Pergunte sobre cultos, eventos, ministérios, horários, ou qualquer informação da igreja!
+                            </small>
+                        </div>
+                    </div>
+
+                    <!-- Campo de Envio -->
+                    <div class="card-footer bg-white p-2 border-top">
+                        <div class="input-group">
+                            <input type="text"
+                                   id="pergunta"
+                                   class="form-control border-0 shadow-sm"
+                                   placeholder="Digite sua pergunta..."
+                                   autocomplete="off"
+                                   style="padding: 10px; font-size: 14px;">
+                            <button class="btn btn-primary px-3" onclick="enviar()">
+                                <i class="bi bi-send-fill"></i>
+                            </button>
+                        </div>
+                        <small class="text-muted d-block mt-1 text-center" style="font-size: 12px;">
+                            Pressione <kbd>Enter</kbd> para enviar
+                        </small>
+                    </div>
+
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Estilo personalizado (bolhas menores e mais rápidas) -->
+<style>
+    .msg-voce {
+        background: #007bff;
+        color: #fff;
+        padding: 8px 12px;
+        border-radius: 15px 15px 0 15px;
+        max-width: 75%;
+        margin-left: auto;
+        margin-bottom: 10px;
+        font-size: 14px;
+        clear: both;
+        float: right;
+    }
+    .msg-ia {
+        background: #e9ecef;
+        padding: 8px 12px;
+        border-radius: 15px 15px 15px 0;
+        max-width: 75%;
+        margin-right: auto;
+        margin-bottom: 10px;
+        font-size: 14px;
+        clear: both;
+        float: left;
+    }
+    #chat { scroll-behavior: smooth; }
+</style>
+
+<script>
+    function adicionarMensagem(autor, texto) {
+        const chat = document.getElementById('chat');
+        const div = document.createElement('div');
+
+        div.className = autor === 'Você' ? 'msg-voce' : 'msg-ia';
+        div.innerHTML = `<small><strong>${autor}:</strong></small><br>${texto.replace(/\n/g, '<br>')}`;
+
+        chat.appendChild(div);
+        chat.scrollTop = chat.scrollHeight;
+    }
+
+    function enviar() {
+        let input = document.getElementById('pergunta');
+        let pergunta = input.value.trim();
+
+        if (!pergunta) return;
+
+        adicionarMensagem('Você', pergunta);
+        input.value = '';
+
+        fetch('/ia/pergunta', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ pergunta: pergunta })
+        })
+        .then(r => r.json())
+        .then(data => {
+            adicionarMensagem('IA', data.resposta);
+        })
+        .catch(() => {
+            adicionarMensagem('IA', 'Desculpe, houve uma falha. Tente novamente.');
+        });
+    }
+
+    // Enviar com Enter
+    document.getElementById('pergunta').addEventListener('keypress', function(e) {
+        if (e.key === 'Enter') {
+            e.preventDefault();
+            enviar();
+        }
+    });
+
+    // Mensagem inicial
+    window.onload = function() {
+        adicionarMensagem('IA', 'A paz do Senhor! Como posso ajudar você hoje?');
+    };
+</script>
+{% endblock %}

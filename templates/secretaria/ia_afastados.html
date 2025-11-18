@@ -1,0 +1,33 @@
+{% extends "base.html" %}
+{% block content %}
+<div class="container mt-4">
+    <h2>Membros que sentimos falta</h2>
+    <p>Estes irmãos não registraram dízimo/oferta nos últimos 35 dias.</p>
+
+    <div class="row">
+        {% for item in mensagens %}
+        <div class="col-md-6 mb-3">
+            <div class="card border-primary">
+                <div class="card-header bg-primary text-white">
+                    <strong>{{ item.membro.nome }}</strong>
+                    {% if item.membro.celular %} | {{ item.membro.celular }}{% endif %}
+                </div>
+                <div class="card-body">
+                    <p class="card-text"><em>"{{ item.mensagem }}"</em></p>
+                    <button class="btn btn-sm btn-outline-primary" onclick="copiar('{{ item.mensagem|replace('\"', '\\\"') }}')">
+                        Copiar mensagem
+                    </button>
+                </div>
+            </div>
+        </div>
+        {% endfor %}
+    </div>
+</div>
+
+<script>
+function copiar(texto) {
+    navigator.clipboard.writeText(texto);
+    alert("Mensagem copiada!");
+}
+</script>
+{% endblock %}

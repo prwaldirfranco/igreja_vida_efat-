@@ -1,0 +1,119 @@
+{% extends "base.html" %}
+{% block title %}Mensagens Enviadas{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+    <h2 class="mb-4">Mensagens Enviadas</h2>
+
+    <!-- Filtros -->
+    <div class="btn-group mb-3">
+        <a href="{{ url_for('mensagens_enviadas', filtro='todas') }}" 
+           class="btn btn-sm {{ 'btn-primary' if filtro == 'todas' else 'btn-outline-primary' }}">Todas</a>
+        <a href="{{ url_for('mensagens_enviadas', filtro='email') }}" 
+           class="btn btn-sm {{ 'btn-outline-info' if filtro == 'email' else 'btn-outline-secondary' }}">E-mails</a>
+        <a href="{{ url_for('mensagens_enviadas', filtro='sms') }}" 
+           class="btn btn-sm {{ 'btn-outline-success' if filtro == 'sms' else 'btn-outline-secondary' }}">SMS</a>
+        <a href="{{ url_for('mensagens_enviadas', filtro='erro') }}" 
+           class="btn btn-sm {{ 'btn-outline-danger' if filtro == 'erro' else 'btn-outline-secondary' }}">Com Erro</a>
+    </div>
+
+    <div class="table-responsive">
+        <table class="table table-hover table-sm">
+            <thead class="table-light">
+                <tr>
+                    <th>Data</th>
+                    <th>Tipo</th>
+                    <th>Para</th>
+                    <th>Assunto</th>
+                    <th>Status</th>
+                    <th>Ações</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for msg in mensagens.items %}
+                <tr>
+                    <td>{{ msg.enviado_em.strftime('%d/%m/%Y %H:%M') }}</td>
+                    <td>
+                        <span class="badge {{ 'bg-info' if msg.tipo == 'email' else 'bg-success' }}">
+                            {{ 'E-mail' if msg.tipo == 'email' else 'SMS' }}
+                        </span>
+                    </td>
+                    <td>{{ msg.destinatario }}</td>
+                    <td>{{ msg.assunto or '(Sem assunto)' }}</td>
+                    <td>
+                        {% if msg.status == 'enviado' %}
+                            <span class="badge bg-success">Enviado</span>
+                        {% else %}
+                            <span class="badge bg-danger" data-bs-toggle="tooltip" title="{{ msg.erro }}">Erro</span>
+                        {% endif %}
+                    </td>
+                    <td>
+                        <button class="btn btn-sm btn-outline-secondary" data-bs-toggle="modal" data-bs-target="#modal{{ msg.id }}">
+                            Ver
+                        </button>
+                    </td>
+                </tr>
+
+                <!-- Modal -->
+                <div class="modal fade" id="modal{{ msg.id }}" tabindex="-1">
+                    <div class="modal-dialog modal-lg">
+                        <div class="modal-content">
+                            <div class="modal-header">
+                                <h5 class="modal-title">Mensagem para {{ msg.destinatario }}</h5>
+                                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                            </div>
+                            <div class="modal-body">
+                                <p><strong>Tipo:</strong> {{ 'E-mail' if msg.tipo == 'email' else 'SMS' }}</p>
+                                <p><strong>Assunto:</strong> {{ msg.assunto or '(Sem assunto)' }}</p>
+                                <p><strong>Enviado em:</strong> {{ msg.enviado_em.strftime('%d/%m/%Y às %H:%M') }}</p>
+                                <hr>
+                                <pre class="p-3 bg-light rounded">{{ msg.corpo }}</pre>
+
+                                {% if msg.erro %}
+                                <div class="alert alert-danger mt-3">
+                                    <strong>Erro:</strong> {{ msg.erro }}
+                                </div>
+                                {% endif %}
+
+                                <!-- BOTÃO DE EXCLUIR -->
+                                <form method="POST" action="{{ url_for('excluir_mensagem', id=msg.id) }}"
+                                      onsubmit="return confirm('Tem certeza que deseja EXCLUIR esta mensagem?');">
+                                    <button type="submit" class="btn btn-danger btn-sm mt-3">
+                                        Excluir Mensagem
+                                    </button>
+                                </form>
+
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+
+    <!-- Paginação -->
+    {% if mensagens.pages > 1 %}
+    <nav>
+        <ul class="pagination pagination-sm justify-content-center">
+            {% if mensagens.has_prev %}
+            <li class="page-item"><a class="page-link" href="{{ url_for('mensagens_enviadas', page=mensagens.prev_num, filtro=filtro) }}">«</a></li>
+            {% endif %}
+            {% for p in mensagens.iter_pages() %}
+                {% if p %}
+                    <li class="page-item {{ 'active' if p == mensagens.page else '' }}">
+                        <a class="page-link" href="{{ url_for('mensagens_enviadas', page=p, filtro=filtro) }}">{{ p }}</a>
+                    </li>
+                {% else %}
+                    <li class="page-item disabled"><span class="page-link">…</span></li>
+                {% endif %}
+            {% endfor %}
+            {% if mensagens.has_next %}
+            <li class="page-item"><a class="page-link" href="{{ url_for('mensagens_enviadas', page=mensagens.next_num, filtro=filtro) }}">»</a></li>
+            {% endif %}
+        </ul>
+    </nav>
+    {% endif %}
+</div>
+{% endblock %}
