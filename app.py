@@ -14,7 +14,7 @@ from werkzeug.utils import secure_filename
 from werkzeug.security import generate_password_hash, check_password_hash
 from datetime import datetime, timedelta
 from dotenv import load_dotenv
-from sqlalchemy import func, or_
+from sqlalchemy import func, or_, exists
 from functools import wraps
 from flask_mail import Mail, Message
 import pandas as pd
@@ -22,6 +22,10 @@ import pdfkit
 import csv
 from io import StringIO, BytesIO
 from twilio.rest import Client
+import google.generativeai as genai
+from googleapiclient.discovery import build
+import re
+
 
 # ================================
 # CONFIGURAÇÕES
@@ -37,12 +41,13 @@ app.config['ALLOWED_EXTENSIONS'] = {
     'png', 'jpg', 'jpeg', 'gif', 'webp', 'svg', 'bmp', 'tiff', 'heic', 'avif'
 }
 
-# E-mail
+# E-mail (SENHA ATUALIZADA!)
 app.config['MAIL_SERVER'] = 'smtp.gmail.com'
 app.config['MAIL_PORT'] = 587
 app.config['MAIL_USE_TLS'] = True
-app.config['MAIL_USERNAME'] = os.getenv('MAIL_USERNAME')
-app.config['MAIL_PASSWORD'] = os.getenv('MAIL_PASSWORD')
+app.config['MAIL_USERNAME'] = 'combavecarapebus@gmail.com'
+app.config['MAIL_PASSWORD'] = 'bnop vcut jmoe djci'  # <-- SENHA CORRETA
+app.config['MAIL_DEFAULT_SENDER'] = 'combavecarapebus@gmail.com'
 mail = Mail(app)
 
 # Twilio (SMS)
@@ -177,6 +182,24 @@ class Compromisso(db.Model):
         return f'<Compromisso {self.titulo} - {self.data}>'
 
 # ================================
+# MODELO PARA MENSAGENS ENVIADAS
+# ================================
+class MensagemEnviada(db.Model):
+    id = db.Column(db.Integer, primary_key=True)
+    tipo = db.Column(db.String(10), nullable=False)  # 'email' ou 'sms'
+    destinatario = db.Column(db.String(200), nullable=False)  # e-mail ou celular
+    assunto = db.Column(db.String(200))
+    corpo = db.Column(db.Text, nullable=False)
+    status = db.Column(db.String(20), default='enviado')  # enviado, erro, pendente
+    erro = db.Column(db.Text)
+    enviado_em = db.Column(db.DateTime, default=datetime.utcnow)
+    user_id = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=False)
+    user = db.relationship('User', backref='mensagens_enviadas')
+
+    def __repr__(self):
+        return f"<Mensagem {self.tipo.upper()} para {self.destinatario}>"
+
+# ================================
 # LOGIN
 # ================================
 @login_manager.user_loader
@@ -212,6 +235,30 @@ def financeiro_required(f):
             return redirect(url_for('secretaria'))
         return f(*args, **kwargs)
     return decorated
+
+def pesquisar_google(query, num_results=5):
+    try:
+        service = build("customsearch", "v1", developerKey=os.getenv("GOOGLE_SEARCH_API_KEY"))
+        result = service.cse().list(
+            q=query,
+            cx=os.getenv("GOOGLE_SEARCH_CX"),
+            num=num_results
+        ).execute()
+
+        items = result.get("items", [])
+        texto = ""
+
+        for item in items:
+            titulo = item.get("title", "")
+            snippet = item.get("snippet", "")
+            link = item.get("link", "")
+            texto += f"• {titulo}\n{snippet}\nFonte: {link}\n\n"
+
+        return texto if texto else None
+
+    except Exception as e:
+        print("Erro ao pesquisar:", e)
+        return None
 
 # ================================
 # FORMULÁRIOS
@@ -323,8 +370,8 @@ class CustoFixoForm(FlaskForm):
 # CONTEXT PROCESSOR
 # ================================
 @app.context_processor
-def inject_year():
-    return {'current_year': datetime.now().year}
+def inject_now():
+    return {'now': datetime.utcnow()}
 
 # ================================
 # FUNÇÕES AUXILIARES
@@ -371,9 +418,49 @@ def ministerios():
 def sobre():
     return render_template('public/sobre.html')
 
-@app.route('/contato')
+@app.route('/contato', methods=['GET', 'POST'])
 def contato():
+    if request.method == 'POST':
+        nome = request.form.get('nome')
+        email = request.form.get('email')
+        mensagem = request.form.get('mensagem')
+
+        # Envio de email
+        from smtplib import SMTP
+        from email.mime.text import MIMEText
+
+        EMAIL_USER = "combavecarapebus@gmail.com"
+        EMAIL_PASS = "yoeg xhzm cjtx eexh"   # você NÃO vai usar senha normal
+
+        conteudo = f"""
+        Nova mensagem enviada pelo site:
+
+        Nome: {nome}
+        Email: {email}
+        Mensagem:
+        {mensagem}
+        """
+
+        msg = MIMEText(conteudo)
+        msg["Subject"] = "Nova mensagem enviada pelo site COMBAVE"
+        msg["From"] = EMAIL_USER
+        msg["To"] = EMAIL_USER
+
+        try:
+            with SMTP("smtp.gmail.com", 587) as smtp:
+                smtp.starttls()
+                smtp.login(EMAIL_USER, EMAIL_PASS)
+                smtp.send_message(msg)
+
+            flash("Mensagem enviada com sucesso!", "success")
+        except Exception as e:
+            print("Erro:", e)
+            flash("Erro ao enviar mensagem.", "danger")
+
+        return redirect(url_for("contato"))
+
     return render_template('public/contato.html')
+
 
 # ================================
 # LOGIN / LOGOUT
@@ -502,6 +589,8 @@ def excluir_evento(id):
     flash("Evento excluído com sucesso!", "info")
     return redirect(url_for('listar_eventos'))
 
+
+
 # ================================
 # CUSTOS FIXOS
 # ================================
@@ -610,6 +699,7 @@ def editar_ministerio(id):
         return redirect(url_for('listar_ministerios'))
     return render_template('secretaria/ministerios_form.html', form=form, title="Editar Ministério")
 
+
 @app.route('/secretaria/ministerios/excluir/<int:id>')
 @secretaria_required
 @login_required
@@ -619,6 +709,7 @@ def excluir_ministerio(id):
     db.session.commit()
     flash("Ministério excluído.", "info")
     return redirect(url_for('listar_ministerios'))
+
 
 # ================================
 # MEMBROS
@@ -777,7 +868,7 @@ def importar_membros():
     return render_template('secretaria/importar_membros.html')
 
 # ================================
-# ENVIO DE MENSAGENS
+# ENVIO DE MENSAGENS (CORRIGIDO!)
 # ================================
 @app.route('/secretaria/enviar_mensagem', methods=['GET', 'POST'])
 @secretaria_required
@@ -786,11 +877,12 @@ def enviar_mensagem():
     if request.method == 'POST':
         tipo = request.form['tipo']
         destinatario_tipo = request.form['destinatario_tipo']
-        ministerio_nomes = request.form.getlist('ministerio_nome')
-        membro_ids = request.form.getlist('membro_id')
-        assunto = request.form.get('assunto', '')
+        ministerio_nomes = request.form.getlist('ministerio_nomes[]')
+        membro_ids = request.form.getlist('membro_ids[]')
+        assunto = request.form.get('assunto', '').strip()
         corpo = request.form['corpo']
 
+        # === COLETA DOS DESTINATÁRIOS ===
         membros = []
         if destinatario_tipo == 'todos':
             membros = Membro.query.all()
@@ -803,26 +895,98 @@ def enviar_mensagem():
                 if m:
                     membros.append(m)
 
+        # Remove duplicados
         membros = list({m.id: m for m in membros}.values())
-        enviados = 0
-        for membro in membros:
-            try:
-                if tipo == 'email' and membro.email:
-                    msg = Message(assunto, sender=app.config['MAIL_USERNAME'], recipients=[membro.email])
-                    msg.body = corpo
-                    mail.send(msg)
-                    enviados += 1
-                elif tipo == 'sms' and membro.celular and twilio_client:
-                    twilio_client.messages.create(body=corpo, from_=TWILIO_PHONE, to=membro.celular)
-                    enviados += 1
-            except Exception as e:
-                flash(f"Erro ao enviar para {membro.nome}: {e}", "warning")
-        flash(f'{enviados} mensagens enviadas com sucesso!', 'success')
-        return redirect(url_for('secretaria'))
 
-    ministerios = Ministerio.query.all()
-    membros = Membro.query.all()
-    return render_template('secretaria/enviar_mensagem.html', ministerios=ministerios, membros=membros)
+        enviados = 0
+        erros = []
+
+        # ============================================
+        # ENVIO DAS MENSAGENS (EMAIL OU SMS)
+        # ============================================
+        for membro in membros:
+            destinatario = membro.email if tipo == 'email' else membro.celular
+            if not destinatario:
+                continue
+
+            try:
+                # =======================
+                # ENVIO DE EMAIL
+                # =======================
+                if tipo == 'email':
+                    msg = Message(
+                        subject=assunto or "Mensagem da Igreja Vida Efatá",
+                        sender=app.config['MAIL_USERNAME'],
+                        recipients=[destinatario],
+                        body=corpo
+                    )
+                    mail.send(msg)
+
+                    db.session.add(MensagemEnviada(
+                        tipo='email',
+                        destinatario=destinatario,
+                        assunto=assunto,
+                        corpo=corpo,
+                        status='enviado',
+                        user_id=current_user.id
+                    ))
+                    enviados += 1
+
+                # =======================
+                # ENVIO DE SMS (TWILIO)
+                # =======================
+                elif tipo == 'sms' and twilio_client:
+                    celular = ''.join(filter(str.isdigit, destinatario))
+
+                    if not celular:
+                        continue
+
+                    # Formato internacional
+                    if not celular.startswith('+'):
+                        celular = '+55' + celular
+
+                    twilio_client.messages.create(
+                        body=corpo,
+                        from_=TWILIO_PHONE,
+                        to=celular
+                    )
+
+                    db.session.add(MensagemEnviada(
+                        tipo='sms',
+                        destinatario=celular,
+                        assunto="SMS",
+                        corpo=corpo,
+                        status='enviado',
+                        user_id=current_user.id
+                    ))
+                    enviados += 1
+
+            except Exception as e:
+                erro_msg = str(e)
+                erros.append(f"{membro.nome} ({destinatario}): {erro_msg}")
+
+                db.session.add(MensagemEnviada(
+                    tipo=tipo,
+                    destinatario=destinatario,
+                    assunto=assunto,
+                    corpo=corpo,
+                    status='erro',
+                    erro=erro_msg,
+                    user_id=current_user.id
+                ))
+
+        db.session.commit()
+
+        flash(f"Mensagens enviadas: {enviados}. Erros: {len(erros)}", "info")
+        return redirect(url_for('enviar_mensagem'))
+
+    # GET → carregar página
+    ministerios = Ministerio.query.order_by(Ministerio.nome).all()
+    membros = Membro.query.order_by(Membro.nome).all()
+    return render_template('secretaria/enviar_mensagem.html',
+                           ministerios=ministerios,
+                           membros=membros)
+
 
 # ================================
 # AGENDA DE COMPROMISSOS
@@ -1322,6 +1486,265 @@ def usuarios_excluir(id):
     db.session.commit()
     flash("Usuário excluído com sucesso!", "info")
     return redirect(url_for('usuarios_listar'))
+
+@app.route('/mensagem/<int:id>/excluir', methods=['POST'])
+@secretaria_required
+@login_required
+def excluir_mensagem(id):
+    msg = MensagemEnviada.query.get_or_404(id)
+    if msg.user_id != current_user.id and not current_user.is_admin:
+        flash("Você não tem permissão para excluir esta mensagem.", "danger")
+        return redirect(url_for('mensagens_enviadas'))
+    db.session.delete(msg)
+    db.session.commit()
+    flash('Mensagem excluída com sucesso!', 'success')
+    return redirect(url_for('mensagens_enviadas'))
+
+
+# ================================
+# VER MENSAGENS ENVIADAS
+# ================================
+@app.route('/secretaria/mensagens_enviadas')
+@secretaria_required
+@login_required
+def mensagens_enviadas():
+    page = request.args.get('page', 1, type=int)
+    filtro = request.args.get('filtro', 'todas')  # todas, email, sms, erro
+
+    query = MensagemEnviada.query.filter_by(user_id=current_user.id)
+
+    if filtro == 'email':
+        query = query.filter_by(tipo='email')
+    elif filtro == 'sms':
+        query = query.filter_by(tipo='sms')
+    elif filtro == 'erro':
+        query = query.filter_by(status='erro')
+
+    mensagens = query.order_by(MensagemEnviada.enviado_em.desc())\
+                     .paginate(page=page, per_page=20, error_out=False)
+
+    return render_template('secretaria/mensagens_enviadas.html',
+                           mensagens=mensagens,
+                           filtro=filtro)
+
+# ================================
+# GEMINI – CORRIGIDO FINAL (18/11/2025)
+# ================================
+genai.configure(api_key=os.getenv("GEMINI_API_KEY"))
+
+# MODELO CORRETO HOJE (de acordo com docs oficiais)
+model = genai.GenerativeModel('gemini-1.5-flash')
+
+# SEU CONTEXTO LINDO
+CONTEXTO_IGREJA = f"""
+Você é o Assistente Inteligente Oficial da Comunidade Batista Vida Efatá, em Carapebus/RJ. 
+Seu papel é servir com amor, gentileza, clareza e sabedoria pastoral. 
+Fale como alguém que ama pessoas, entende suas dores e aponta para Jesus.
+
+IDENTIDADE DA IGREJA:
+- Nome: Comunidade Batista Vida Efatá
+- Cidade: Carapebus/RJ
+- Visão: Uma igreja família, bíblica, acolhedora, pentecostal saudável e missionária.
+- Linguagem: amorosa, próxima, humana e cheia de esperança.
+- Frases que representam nossa identidade: 
+  * "Cuidar de pessoas é a nossa missão."
+  * "Somos uma igreja de portas abertas e coração aberto."
+  * "Nós acreditamos no poder transformador de Jesus."
+  * "Aqui, ninguém caminha sozinho."
+
+INFORMAÇÕES OFICIAIS:
+- Pastor titular: Pr. Waldir Júnior
+- Pastores auxiliares: Pr. Waldir Franco e Pra. Maria de Lourdes
+- Secretaria: Diaconisa Maria de Fátima
+- Endereço: Rua Silas Fontes Caetano, 91 – Carapebus/RJ
+- Cultos: Quarta 19h30 | Domingo 18h30
+- Pix oficial: sibcarapebus@gmail.com
+
+COMO VOCÊ DEVE RESPONDER:
+1. Sempre com amor, graça e palavras de vida — como alguém que cuida de pessoas.
+2. Responda de forma clara, acolhedora e bíblica.
+3. Sempre que possível:
+   - ofereça um versículo,
+   - traga uma aplicação prática,
+   - traga uma reflexão cristã,
+   - incentive a pessoa com palavras de fé.
+4. Em perguntas teológicas, use base bíblica confiável, doutrina cristã histórica e perspectiva pentecostal equilibrada.
+5. Não invente informações administrativas; se não souber algo, diga:
+   → "Vou verificar com a secretaria!"
+6. Não use linguagem fria, robótica ou distante.
+7. Evite respostas curtas demais. Traga profundidade.
+8. Quando alguém estiver triste, ansioso ou desanimado, responda como um conselheiro espiritual:
+   - empático,
+   - sensível,
+   - alguém que ora pela pessoa.
+9. Pode incentivar a pessoa a ir aos cultos, mas sem pressão — sempre com carinho.
+10. Nunca critique outras igrejas. Seja de honra.
+
+PAUTA DE RESPOSTAS COMPORTAMENTAIS:
+- Mostre sempre oração, esperança e cuidado.
+- Nunca repreenda diretamente. Sempre com carinho e sabedoria.
+- Quando falar de oferta, use equilíbrio, amor e gratidão — nunca imposição.
+
+TAREFAS QUE VOCÊ PODE FAZER:
+- Responder perguntas bíblicas, teológicas, emocionais e espirituais.
+- Ajudar membros com informações da igreja.
+- Escrever mensagens de aniversário, saudade, conforto ou encorajamento.
+- Criar textos para ministérios, convites, comunicados e avisos.
+- Criar textos para redes sociais.
+- Gerar mensagens para membros afastados.
+- Gerar estudos curtos para células e departamentos.
+- Gerar respostas para conversas cotidianas.
+- Gerar reflexões, devocionais e orações.
+- Ajudar no cuidado de pessoas.
+
+INSTRUÇÃO FINAL:
+Você fala sempre como alguém que representa Jesus com graça e verdade.
+Hoje é {datetime.now().strftime("%d de %B de %Y")}.
+"""
+
+# ================================
+# GEMINI (IA) - CONFIGURAÇÃO 2025 (CORRIGIDA)
+# ================================
+genai.configure(api_key=os.getenv("GEMINI_API_KEY"))
+
+# Modelo compatível com a API v1beta — 100% funcional
+model = genai.GenerativeModel("models/gemini-2.5-flash")
+
+CONTEXTO_IGREJA = f"""
+Você é o Assistente Inteligente oficial da Comunidade Batista Vida Efatá, em Carapebus/RJ.
+Fale com amor, respeito e base bíblica. Seja acolhedor e pastoral.
+
+Informações oficiais:
+- Igreja: Comunidade Batista Vida Efatá
+- Pastor titular: Pr. Waldir Júnior
+- Pastores auxiliares: Pr. Waldir Franco e Pra. Maria de Lourdes
+- Secretaria: Diaconisa Maria de Fátima
+- Cultos: Quarta 19h30 | Domingo 18h30
+- Endereço: Rua Silas Fontes Caetano, 91 – Carapebus/RJ
+- Pix: sibcarapebus@gmail.com
+- Hoje é {datetime.now().strftime("%d de %B de %Y")}
+
+Nunca invente informações. Se não souber, diga: "Vou verificar com a secretaria!"
+"""
+
+# ================================
+# IA FUNCIONANDO 100%
+# ================================
+@app.route('/secretaria/ia_chat')
+@login_required
+@secretaria_required
+def ia_chat():
+    return render_template('secretaria/ia_chat.html')
+
+
+@app.route('/ia/pergunta', methods=['POST'])
+@login_required
+@secretaria_required
+def ia_pergunta():
+    pergunta = request.json.get('pergunta', '').strip()
+    if not pergunta:
+        return jsonify({"resposta": "Digite sua pergunta, por favor!"})
+
+    try:
+        # Primeiro, pergunta ao modelo se precisa de busca externa
+        analise = model.generate_content(
+            f"Pergunta: {pergunta}\n"
+            "Responda apenas com SIM ou NÃO.\n"
+            "Essa pergunta exige informação atualizada da internet?"
+        ).text.strip().lower()
+
+        resposta_google = None
+        if "sim" in analise:
+            resposta_google = pesquisar_google(pergunta)
+
+        # Se houver resultados, envia para o Gemini resumir
+        if resposta_google:
+            resposta_final = model.generate_content(
+                CONTEXTO_IGREJA +
+                f"\n\nPergunta do usuário: {pergunta}\n"
+                "Aqui estão os dados encontrados na internet:\n\n"
+                f"{resposta_google}\n\n"
+                "Resuma de forma clara, amorosa e pastoral."
+            ).text.strip()
+
+        else:
+            resposta_final = model.generate_content(
+                CONTEXTO_IGREJA + f"\n\nPergunta: {pergunta}"
+            ).text.strip()
+
+    except Exception as e:
+        print("Erro Gemini:", e)
+        resposta_final = "Desculpe, não consegui responder agora. Tente novamente em alguns minutos."
+
+    return jsonify({"resposta": resposta_final})
+
+
+
+@app.route('/ia/afastados')
+@login_required
+@secretaria_required
+def ia_afastados():
+    data_limite = datetime.now() - timedelta(days=35)
+
+    afastados = db.session.query(Membro).filter(
+        Membro.status == 'ativo',
+        ~exists().where(
+            (Transacao.membro_id == Membro.id) &
+            (Transacao.data >= data_limite)
+        )
+    ).order_by(Membro.nome).limit(20).all()
+
+    mensagens = []
+
+    for m in afastados:
+        prompt = (
+            f"Escreva uma mensagem curta, delicada e cheia de amor para "
+            f"{m.nome}, que não vem à igreja há mais de 30 dias."
+        )
+
+        try:
+            r = model.generate_content(prompt)
+            msg = r.text.strip()
+        except:
+            msg = f"Querido(a) {m.nome}, sentimos sua falta! Você é muito especial para nós."
+
+        mensagens.append({"membro": m, "mensagem": msg})
+
+    return render_template('secretaria/ia_afastados.html', mensagens=mensagens)
+
+import google.generativeai as genai
+
+genai.configure(api_key=os.getenv("GEMINI_API_KEY"))
+
+modelos = genai.list_models()
+
+for m in modelos:
+    print(m.name)
+
+# ================================
+# ASSISTENTE PÚBLICO (sem login!)
+# ================================
+@app.route('/assistente')
+def assistente_publico():
+    return render_template('public/assistente.html')
+
+@app.route('/assistente/pergunta', methods=['POST'])
+def assistente_pergunta_publica():
+    pergunta = request.json.get('pergunta', '').strip()
+    if not pergunta:
+        return jsonify({"resposta": "Por favor, digite sua pergunta."})
+
+    try:
+        resposta = model.generate_content(CONTEXTO_IGREJA + f"\n\nPergunta do visitante: {pergunta}")
+        texto = resposta.text.strip()
+    except Exception as e:
+        print("Erro Gemini (público):", e)
+        texto = "Oi! No momento estou com uma pequena instabilidade, mas já já volto! Pode tentar novamente em alguns segundos."
+
+    return jsonify({"resposta": texto})
+@app.route("/assistente")
+def assistente():
+    return render_template("assistente.html")
 
 # ================================
 # EXECUÇÃO
