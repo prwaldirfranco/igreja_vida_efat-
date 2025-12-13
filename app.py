@@ -119,9 +119,7 @@ class Membro(db.Model):
     data_cadastro = db.Column(db.DateTime, default=datetime.utcnow)
     status = db.Column(db.String(20), default='ativo')
     ativo = db.Column(db.Boolean, default=True)
-    # === NOVO CAMPO: PROFISSÃO ===
-    profissao = db.Column(db.String(100), nullable=True)  # Novo campo
-
+    
     def __repr__(self):
         return f'<Membro {self.nome}>'
 
@@ -1756,3 +1754,4 @@ if __name__ == '__main__':
         create_initial_data()
 
     app.run(debug=True, port=5000)
+
