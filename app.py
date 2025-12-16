@@ -1214,7 +1214,7 @@ def exportar_pdf():
     style_title = styles['Title']
     style_normal = styles['Normal']
     style_heading = styles['Heading1']
-
+    elements = []
     # Cabeçalho (logo da igreja)
     logo_path = os.path.join(app.root_path, 'static', 'img', 'logo.png')
     img = Image(logo_path, width=100, height=100)
@@ -1625,6 +1625,7 @@ if __name__ == '__main__':
         create_initial_data()
 
     app.run(debug=True, port=5000)
+
 
 
 
