@@ -1216,9 +1216,11 @@ def exportar_pdf():
     style_heading = styles['Heading1']
 
     # Cabeçalho (logo da igreja)
-    logo_path = os.path.join('caminho/para/logo.png')  # Altere o caminho da logo
+    logo_path = os.path.join(app.root_path, 'static', 'img', 'logo.png')
     img = Image(logo_path, width=100, height=100)
-    img.setAlign('CENTER')
+    img.hAlign = 'CENTER'
+    elements.append(img)
+
 
     # Título
     titulo_paragraph = Paragraph(titulo, style_title)
@@ -1623,5 +1625,6 @@ if __name__ == '__main__':
         create_initial_data()
 
     app.run(debug=True, port=5000)
+
 
 
