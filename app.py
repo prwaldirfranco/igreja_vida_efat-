@@ -1184,12 +1184,11 @@ def exportar_pdf():
     ano = request.args.get('ano')
     membro_id = request.args.get('membro_id')
     tipo = request.args.get('tipo', 'todos')
-
     q = Transacao.query
 
     if membro_id:
         q = q.filter(Transacao.membro_id == int(membro_id))
-        titulo = f'Relatório Financeiro — Membro ID {membro_id}'
+        titulo = f'Relatório por Membro ID {membro_id}'
     else:
         titulo = 'Relatório Financeiro'
 
@@ -1206,67 +1205,60 @@ def exportar_pdf():
     transacoes = q.order_by(Transacao.data.desc()).all()
     total = sum(t.valor for t in transacoes) if transacoes else 0
 
+    # Criar o conteúdo do PDF
     buffer = BytesIO()
+    doc = SimpleDocTemplate(buffer, pagesize=A4)
 
-    doc = SimpleDocTemplate(
-        buffer,
-        pagesize=A4,
-        rightMargin=40,
-        leftMargin=40,
-        topMargin=40,
-        bottomMargin=40
-    )
-
+    # Estilo
     styles = getSampleStyleSheet()
-    elementos = []
+    style_title = styles['Title']
+    style_normal = styles['Normal']
+    style_heading = styles['Heading1']
+
+    # Cabeçalho (logo da igreja)
+    logo_path = os.path.join('caminho/para/logo.png')  # Altere o caminho da logo
+    img = Image(logo_path, width=100, height=100)
+    img.setAlign('CENTER')
 
     # Título
-    elementos.append(Paragraph(f"<b>{titulo}</b>", styles['Title']))
-    elementos.append(Spacer(1, 20))
-
-    # Tabela
-    dados = [['Data', 'Descrição', 'Tipo', 'Valor']]
-
+    titulo_paragraph = Paragraph(titulo, style_title)
+    
+    # Montar conteúdo da tabela
+    data = [['Data', 'Descrição', 'Tipo', 'Valor']]
     for t in transacoes:
-        dados.append([
-            t.data.strftime('%d/%m/%Y'),
-            t.descricao,
-            t.tipo.capitalize(),
-            f'R$ {t.valor:,.2f}'.replace(',', 'X').replace('.', ',').replace('X', '.')
-        ])
+        data.append([t.data.strftime('%d/%m/%Y'), t.descricao, t.tipo, f'R$ {t.valor:,.2f}'])
 
-    tabela = Table(dados, colWidths=[80, 220, 80, 80])
-    tabela.setStyle([
-        ('BACKGROUND', (0, 0), (-1, 0), colors.darkgray),
-        ('TEXTCOLOR', (0, 0), (-1, 0), colors.white),
-        ('GRID', (0, 0), (-1, -1), 0.5, colors.gray),
-        ('ALIGN', (3, 1), (-1, -1), 'RIGHT'),
+    # Tabela de transações
+    table = Table(data)
+    table.setStyle([
+        ('BACKGROUND', (0, 0), (-1, 0), colors.orange),
+        ('TEXTCOLOR', (0, 0), (-1, 0), colors.whitesmoke),
+        ('ALIGN', (0, 0), (-1, -1), 'CENTER'),
         ('FONTNAME', (0, 0), (-1, 0), 'Helvetica-Bold'),
-        ('BOTTOMPADDING', (0, 0), (-1, 0), 10),
+        ('GRID', (0, 0), (-1, -1), 0.5, colors.black),
+        ('BOTTOMPADDING', (0, 0), (-1, 0), 12),
     ])
 
-    elementos.append(tabela)
-    elementos.append(Spacer(1, 20))
+    # Rodapé
+    rodape_paragraph = Paragraph("Comunidade Batista Vida Efatá • Todos os direitos reservados", styles['Italic'])
 
-    # Total
-    elementos.append(
-        Paragraph(
-            f"<b>Total Geral:</b> R$ {total:,.2f}".replace(',', 'X').replace('.', ',').replace('X', '.'),
-            styles['Heading2']
-        )
-    )
+    # Adicionar elementos ao documento
+    content = [img, Spacer(1, 12), titulo_paragraph, Spacer(1, 12), table, Spacer(1, 12), rodape_paragraph]
 
-    doc.build(elementos)
-    buffer.seek(0)
+    # Gerar o PDF
+    doc.build(content)
 
+    # Salvar o PDF no buffer
+    pdf = buffer.getvalue()
+    buffer.close()
+
+    # Preparar a resposta do arquivo PDF
     filename = f'relatorio_{mes or ano or "completo"}.pdf'
+    resp = make_response(pdf)
+    resp.headers['Content-Type'] = 'application/pdf'
+    resp.headers['Content-Disposition'] = f'attachment; filename={filename}'
 
-    return send_file(
-        buffer,
-        as_attachment=True,
-        download_name=filename,
-        mimetype='application/pdf'
-    )
+    return resp
 @app.route('/exportar/excel')
 @financeiro_required
 @login_required
@@ -1631,3 +1623,4 @@ if __name__ == '__main__':
         create_initial_data()
 
     app.run(debug=True, port=5000)
+
