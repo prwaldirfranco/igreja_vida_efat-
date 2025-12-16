@@ -1235,8 +1235,12 @@ def exportar_pdf():
     # Montar conteúdo da tabela
     data = [['Data', 'Descrição', 'Tipo', 'Valor']]
     for t in transacoes:
-        data.append([t.data.strftime('%d/%m/%Y'), t.descricao, t.tipo, f'R$ {t.valor:,.2f}'])
-
+        data.append([
+    t.data.strftime('%d/%m/%Y'),
+    t.descricao,
+    t.tipo,
+    f'R$ {t.valor:,.2f}'
+])
     # Tabela de transações
     table = Table(data)
     table.setStyle([
@@ -1632,6 +1636,7 @@ if __name__ == '__main__':
         create_initial_data()
 
     app.run(debug=True, port=5000)
+
 
 
 
