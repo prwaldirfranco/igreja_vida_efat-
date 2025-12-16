@@ -1236,10 +1236,10 @@ def exportar_pdf():
     data = [['Data', 'Descrição', 'Tipo', 'Valor']]
     for t in transacoes:
         data.append([
-    t.data.strftime('%d/%m/%Y'),
-    t.descricao,
-    t.tipo,
-    f'R$ {t.valor:,.2f}'
+    t.data.strftime('%d/%m/%Y') if t.data else '-',
+    t.categoria if t.categoria else '-',
+    t.tipo if t.tipo else '-',
+    f'R$ {t.valor:,.2f}' if t.valor is not None else 'R$ 0,00'
 ])
     # Tabela de transações
     table = Table(data)
@@ -1636,6 +1636,7 @@ if __name__ == '__main__':
         create_initial_data()
 
     app.run(debug=True, port=5000)
+
 
 
 
