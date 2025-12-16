@@ -18,13 +18,19 @@ from sqlalchemy import func, or_, exists
 from functools import wraps
 from flask_mail import Mail, Message
 import pandas as pd
-import pdfkit
 import csv
 from io import StringIO, BytesIO
 from twilio.rest import Client
 import google.generativeai as genai
 from googleapiclient.discovery import build
 import re
+
+# ✅ PDF compatível com Render
+from reportlab.lib.pagesizes import A4
+from reportlab.platypus import SimpleDocTemplate, Paragraph, Table, Spacer
+from reportlab.lib.styles import getSampleStyleSheet
+from reportlab.lib import colors
+
 # ================================
 # CONFIGURAÇÕES
 # ================================
@@ -1178,32 +1184,89 @@ def exportar_pdf():
     ano = request.args.get('ano')
     membro_id = request.args.get('membro_id')
     tipo = request.args.get('tipo', 'todos')
+
     q = Transacao.query
+
     if membro_id:
         q = q.filter(Transacao.membro_id == int(membro_id))
-        titulo = f'Relatório por Membro ID {membro_id}'
+        titulo = f'Relatório Financeiro — Membro ID {membro_id}'
     else:
         titulo = 'Relatório Financeiro'
+
     if mes:
         q = q.filter(func.strftime('%Y-%m', Transacao.data) == mes)
         titulo += f' (Mês: {mes})'
     elif ano:
         q = q.filter(func.strftime('%Y', Transacao.data) == ano)
         titulo += f' (Ano: {ano})'
+
     if tipo != 'todos':
         q = q.filter(Transacao.tipo == tipo)
+
     transacoes = q.order_by(Transacao.data.desc()).all()
     total = sum(t.valor for t in transacoes) if transacoes else 0
-    html = render_template('relatorios/pdf_financeiro.html',
-                           transacoes=transacoes, total_geral=total, titulo=titulo)
-    caminho_wk = os.getenv('WKHTMLTOPDF_PATH', r'C:\Program Files\wkhtmltopdf\bin\wkhtmltopdf.exe')
-    cfg = pdfkit.configuration(wkhtmltopdf=caminho_wk)
-    pdf = pdfkit.from_string(html, False, configuration=cfg)
+
+    buffer = BytesIO()
+
+    doc = SimpleDocTemplate(
+        buffer,
+        pagesize=A4,
+        rightMargin=40,
+        leftMargin=40,
+        topMargin=40,
+        bottomMargin=40
+    )
+
+    styles = getSampleStyleSheet()
+    elementos = []
+
+    # Título
+    elementos.append(Paragraph(f"<b>{titulo}</b>", styles['Title']))
+    elementos.append(Spacer(1, 20))
+
+    # Tabela
+    dados = [['Data', 'Descrição', 'Tipo', 'Valor']]
+
+    for t in transacoes:
+        dados.append([
+            t.data.strftime('%d/%m/%Y'),
+            t.descricao,
+            t.tipo.capitalize(),
+            f'R$ {t.valor:,.2f}'.replace(',', 'X').replace('.', ',').replace('X', '.')
+        ])
+
+    tabela = Table(dados, colWidths=[80, 220, 80, 80])
+    tabela.setStyle([
+        ('BACKGROUND', (0, 0), (-1, 0), colors.darkgray),
+        ('TEXTCOLOR', (0, 0), (-1, 0), colors.white),
+        ('GRID', (0, 0), (-1, -1), 0.5, colors.gray),
+        ('ALIGN', (3, 1), (-1, -1), 'RIGHT'),
+        ('FONTNAME', (0, 0), (-1, 0), 'Helvetica-Bold'),
+        ('BOTTOMPADDING', (0, 0), (-1, 0), 10),
+    ])
+
+    elementos.append(tabela)
+    elementos.append(Spacer(1, 20))
+
+    # Total
+    elementos.append(
+        Paragraph(
+            f"<b>Total Geral:</b> R$ {total:,.2f}".replace(',', 'X').replace('.', ',').replace('X', '.'),
+            styles['Heading2']
+        )
+    )
+
+    doc.build(elementos)
+    buffer.seek(0)
+
     filename = f'relatorio_{mes or ano or "completo"}.pdf'
-    resp = make_response(pdf)
-    resp.headers['Content-Type'] = 'application/pdf'
-    resp.headers['Content-Disposition'] = f'attachment; filename={filename}'
-    return resp
+
+    return send_file(
+        buffer,
+        as_attachment=True,
+        download_name=filename,
+        mimetype='application/pdf'
+    )
 @app.route('/exportar/excel')
 @financeiro_required
 @login_required
@@ -1566,4 +1629,5 @@ def assistente():
 if __name__ == '__main__':
     with app.app_context():
         create_initial_data()
+
     app.run(debug=True, port=5000)
