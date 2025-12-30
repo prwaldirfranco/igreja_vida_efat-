@@ -284,22 +284,52 @@ class MembroForm(FlaskForm):
     bairro = StringField("Bairro")
     cidade = StringField("Cidade")
     estado = StringField("Estado")
-    data_nascimento = DateField("Data de Nascimento", format="%Y-%m-%d")
+
+    # ⇨ ADICIONE Optional() aqui
+    data_nascimento = DateField(
+        "Data de Nascimento",
+        format="%Y-%m-%d",
+        validators=[Optional()]
+    )
+
     estado_civil = SelectField("Estado Civil", choices=[
         ('', '--'), ('solteiro', 'Solteiro(a)'), ('casado', 'Casado(a)'),
         ('viuvo', 'Viúvo(a)'), ('divorciado', 'Divorciado(a)')
     ])
+
     conjuge = StringField("Nome do Cônjuge")
-    filhos = IntegerField("Quantidade de Filhos", default=0)
+
+    # ⇨ ADICIONE Optional() e mantenha default=0
+    filhos = IntegerField(
+        "Quantidade de Filhos",
+        validators=[Optional()],
+        default=0
+    )
+
     batizado = BooleanField("É Batizado(a)?")
-    data_batismo = DateField("Data do Batismo", format="%Y-%m-%d")
-    foto = FileField("Foto", validators=[FileAllowed(['jpg','png','jpeg','gif','webp','svg','bmp','tiff','heic','avif'], 'Apenas imagens!')])
+
+    # ⇨ ADICIONE Optional() aqui também
+    data_batismo = DateField(
+        "Data do Batismo",
+        format="%Y-%m-%d",
+        validators=[Optional()]
+    )
+
+    foto = FileField("Foto", validators=[FileAllowed([
+        'jpg', 'png', 'jpeg', 'gif', 'webp', 'svg', 'bmp', 'tiff', 'heic', 'avif'
+    ], 'Apenas imagens!')])
+
     ministerio = SelectField("Ministério", validators=[Optional()])
+
     status = SelectField("Status", validators=[DataRequired()])
+
     submit = SubmitField("Salvar Membro")
+
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
-        self.ministerio.choices = [('', '-- Nenhum --')] + [(m.nome, m.nome) for m in Ministerio.query.order_by(Ministerio.nome).all()]
+        self.ministerio.choices = [('', '-- Nenhum --')] + [
+            (m.nome, m.nome) for m in Ministerio.query.order_by(Ministerio.nome).all()
+        ]
         self.status.choices = [
             ("ativo", "Ativo"), ("inativo", "Inativo"), ("afastado", "Afastado"),
             ("nao_membro", "Não Membro"), ("visitante", "Visitante")
